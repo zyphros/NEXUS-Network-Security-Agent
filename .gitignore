@@ -1,0 +1,23 @@
+# Local secrets and machine-specific settings
+.env
+
+# Python environments and generated files
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+
+# Runtime data, reports, models, and databases
+network_agent.log
+security_system.log
+threat_reports/
+models/
+*.pkl
+*.db
+
+# Editor and operating-system files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
