@@ -156,4 +156,4 @@ python network_threat_detection.py --once --no-ai
 
 ## License
 
-No license is included yet. Add a license only after choosing the terms under which you want others to use or redistribute the project.
+Copyright © 2026 zyphros. All rights reserved.  No license is granted for using, copying, modifying, or distributing this project. Contact the copyright holder for permission.
