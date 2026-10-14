@@ -1,8 +1,38 @@
 # NEXUS — Local Network Security Agent
 
-**A lightweight Windows desktop dashboard for monitoring network connection metadata, with optional, private AI explanations from a local Ollama model.**
+**A lightweight Windows desktop dashboard for monitoring network connection metadata, with optional AI explanations from a local Ollama model.**
+
+`Windows` · `Python` · `Tkinter` · `psutil` · `Ollama (optional)`
+
+[العربية](README.ar.md) · [Repository](https://github.com/zyphros/NEXUS-Network-Security-Agent)
 
 > This project is an educational monitoring prototype. It reports rule-based indicators for human review; it is not a complete intrusion-detection system and does not prove that an attack is occurring.
+
+## Dashboard preview
+
+[![NEXUS desktop dashboard preview](docs/images/nexus-dashboard.png)](docs/images/nexus-dashboard.png)
+
+*Dashboard screenshot from a local session. Remote addresses have been replaced with documentation-only example addresses.*
+
+## Project at a glance
+
+- **Purpose:** Make local network connection activity and simple rule-based alerts easy to inspect from a desktop dashboard.
+- **Monitoring:** Reads connection metadata with `psutil`; it does not capture packet contents.
+- **AI:** Optional Ollama explanations run locally and are requested only after a rule-based alert.
+- **Safety:** Monitoring starts only when the user presses Start. The app does not block traffic or change firewall settings.
+- **Audience:** A small educational Windows project and portfolio demonstration, not a production security product.
+
+## Contents
+
+- [Highlights](#highlights)
+- [Requirements](#requirements)
+- [Quick start](#quick-start)
+- [Configuration](#configuration)
+- [Repository layout](#repository-layout)
+- [Data and privacy](#data-and-privacy)
+- [Limitations](#limitations)
+- [Tests](#tests)
+- [Arabic documentation](README.ar.md)
 
 ## Highlights
 
@@ -14,10 +44,6 @@
 - Continues rule-based monitoring when Ollama is unavailable.
 - Stores application logs and reports in a per-user local data directory, outside the repository.
 - Uses bounded scans and a small, quantized 3B model by default to suit memory-constrained laptops.
-
-## Screenshots
-
-The application opens as a native Windows/Tkinter desktop window. Start the dashboard with the steps below to view the live interface.
 
 ## Requirements
 
@@ -77,6 +103,12 @@ Increase `POLL_SECONDS` to reduce scan frequency. Rule thresholds are configurab
 ├── requirements.txt           # Minimal Python dependency
 ├── .env.example               # Safe configuration template
 ├── .gitignore                 # Excludes secrets and generated runtime data
+├── docs/images/
+│   └── nexus-dashboard.png    # Redacted dashboard preview
+├── tests/
+│   └── test_rule_detector.py  # Rule-detector unit tests
+├── README.md                  # English project guide
+├── README.ar.md               # Arabic project guide
 ├── setup_windows.bat          # First-time local setup
 ├── run_dashboard.bat          # Launch the GUI
 ├── run_agent.bat              # Launch the CLI monitor
