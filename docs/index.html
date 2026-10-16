@@ -423,6 +423,7 @@
           <article class="feature-card"><span class="feature-icon" aria-hidden="true">04</span><h3 data-ar="مصمم ليبقى خفيفًا" data-en="Designed to stay lightweight">مصمم ليبقى خفيفًا</h3><p data-ar="فواصل الفحص قابلة للتغيير، والتحليل الذكي اختياري ومحدد المهلة ولا يُطلب في كل دورة." data-en="Polling intervals are adjustable, and optional AI uses bounded generation and is not called on every scan.">فواصل الفحص قابلة للتغيير، والتحليل الذكي اختياري ومحدد المهلة ولا يُطلب في كل دورة.</p></article>
           <article class="feature-card"><span class="feature-icon" aria-hidden="true">05</span><h3 data-ar="إعداد وتشغيل بسيطان" data-en="Simple Windows setup">إعداد وتشغيل بسيطان</h3><p data-ar="ملفات تشغيل وإعداد مخصصة لويندوز، مع نسخة طرفية للاستخدام دون الواجهة الرسومية." data-en="Windows setup and launch scripts, plus a command-line option for running without the GUI.">ملفات تشغيل وإعداد مخصصة لويندوز، مع نسخة طرفية للاستخدام دون الواجهة الرسومية.</p></article>
           <article class="feature-card"><span class="feature-icon" aria-hidden="true">06</span><h3 data-ar="توثيق واختبارات" data-en="Docs and tests">توثيق واختبارات</h3><p data-ar="أدلة استخدام باللغتين واختبارات لوظائف كشف القواعد وتجنب التنبيهات المكررة." data-en="Bilingual project guides and unit tests for rule detection and duplicate-alert cooldown behavior.">أدلة استخدام باللغتين واختبارات لوظائف كشف القواعد وتجنب التنبيهات المكررة.</p></article>
+          <article class="feature-card"><span class="feature-icon" aria-hidden="true">07</span><h3 data-ar="مدخلات أمنية أولية" data-en="Initial security event inputs">مدخلات أمنية أولية</h3><p data-ar="استقبال اختياري لـ Syslog عبر UDP وقراءة إضافات Wazuh alerts.json؛ للعرض والتحليل الاستشاري فقط." data-en="Optional Syslog UDP and Wazuh alerts.json inputs, for display and advisory analysis only.">استقبال اختياري لـ Syslog عبر UDP وقراءة إضافات Wazuh alerts.json؛ للعرض والتحليل الاستشاري فقط.</p></article>
         </div>
       </div>
     </section>
@@ -442,6 +443,34 @@
       </div>
     </section>
 
+    <section class="content-section">
+      <div class="shell">
+        <div class="section-heading">
+          <h2 data-ar="التكاملات الحالية" data-en="Current integrations">التكاملات الحالية</h2>
+          <p data-ar="نقطة بداية قابلة للتوسعة، وليست ادعاءً بالتوافق الشامل مع أنظمة مراكز البيانات." data-en="An extensible starting point, not a claim of universal data-center product compatibility.">نقطة بداية قابلة للتوسعة، وليست ادعاءً بالتوافق الشامل مع أنظمة مراكز البيانات.</p>
+        </div>
+        <div class="privacy-layout">
+          <article class="info-panel">
+            <h3 data-ar="Syslog UDP وWazuh" data-en="Syslog UDP and Wazuh">Syslog UDP وWazuh</h3>
+            <ul>
+              <li data-ar="يستقبل Syslog UDP اختياريًا على واجهة محلية افتراضيًا، مع عتبة للشدة وقائمة انتظار محدودة." data-en="Optional Syslog UDP listens on loopback by default, with a severity threshold and bounded queue.">يستقبل Syslog UDP اختياريًا على واجهة محلية افتراضيًا، مع عتبة للشدة وقائمة انتظار محدودة.</li>
+              <li data-ar="يتابع سجلات Wazuh JSON الجديدة في ملف alerts.json يستطيع الجهاز قراءته." data-en="Tails new Wazuh JSON records from a readable alerts.json file.">يتابع سجلات Wazuh JSON الجديدة في ملف alerts.json يستطيع الجهاز قراءته.</li>
+              <li data-ar="يستمر تنسيق الأحداث موحدًا للتوسع لاحقًا عبر موصلات منفصلة." data-en="Events are normalized as a foundation for adding separate connectors later.">يستمر تنسيق الأحداث موحدًا للتوسع لاحقًا عبر موصلات منفصلة.</li>
+            </ul>
+          </article>
+          <article class="info-panel">
+            <h3 data-ar="حدود مهمة" data-en="Important boundaries">حدود مهمة</h3>
+            <ul>
+              <li data-ar="Syslog UDP غير مشفر ولا يتحقق من هوية المرسل؛ لا تعرضه على الإنترنت." data-en="Syslog UDP is unencrypted and unauthenticated; do not expose it to the public internet.">Syslog UDP غير مشفر ولا يتحقق من هوية المرسل؛ لا تعرضه على الإنترنت.</li>
+              <li data-ar="النموذج الافتراضي عام وليس نموذجًا سيبرانيًا متخصصًا تم التحقق منه." data-en="The default model is general-purpose, not a validated cybersecurity specialist model.">النموذج الافتراضي عام وليس نموذجًا سيبرانيًا متخصصًا تم التحقق منه.</li>
+              <li data-ar="لا توجد بعد موصلات عامة لكل SIEM/EDR أو إجراءات استجابة آلية أو دعم عناقيد عالية التوافر." data-en="There are no universal SIEM/EDR adapters, automated response actions, or high-availability cluster support yet.">لا توجد بعد موصلات عامة لكل SIEM/EDR أو إجراءات استجابة آلية أو دعم عناقيد عالية التوافر.</li>
+            </ul>
+          </article>
+        </div>
+        <div class="notice"><span data-ar="إعدادات الربط وخيارات Wazuh موثقة في" data-en="Connector setup and Wazuh options are documented in the">إعدادات الربط وخيارات Wazuh موثقة في</span> <a href="https://github.com/zyphros/NEXUS-Network-Security-Agent/blob/main/README.ar.md" target="_blank" rel="noopener noreferrer" data-ar="دليل المشروع." data-en="project guide.">دليل المشروع.</a></div>
+      </div>
+    </section>
+
     <section class="content-section" id="privacy">
       <div class="shell">
         <div class="section-heading">
@@ -453,6 +482,7 @@
             <h3 data-ar="ما تتم مراقبته" data-en="What is monitored">ما تتم مراقبته</h3>
             <ul>
               <li data-ar="بيانات وصفية لاتصالات الشبكة: العناوين والمنافذ والحالة واسم العملية عند توفره." data-en="Network connection metadata: endpoints, ports, state, and process name when available.">بيانات وصفية لاتصالات الشبكة: العناوين والمنافذ والحالة واسم العملية عند توفره.</li>
+              <li data-ar="عند تفعيل مصادر Wazuh/Syslog، تُطبّع حقول التنبيه المحددة وتُحفظ في تقارير محلية." data-en="When Wazuh/Syslog inputs are enabled, selected normalized alert fields are saved in local reports.">عند تفعيل مصادر Wazuh/Syslog، تُطبّع حقول التنبيه المحددة وتُحفظ في تقارير محلية.</li>
               <li data-ar="السجلات والتقارير تحفظ محليًا في مجلد بيانات المستخدم، خارج ملفات المشروع." data-en="Logs and reports are stored locally in the user's data directory, outside the project files.">السجلات والتقارير تحفظ محليًا في مجلد بيانات المستخدم، خارج ملفات المشروع.</li>
               <li data-ar="عنوان Ollama الافتراضي محلي؛ لا يحتاج شرح الذكاء الاصطناعي مفتاح API سحابيًا." data-en="The default Ollama endpoint is local; AI explanations need no cloud API key.">عنوان Ollama الافتراضي محلي؛ لا يحتاج شرح الذكاء الاصطناعي مفتاح API سحابيًا.</li>
             </ul>
@@ -466,7 +496,7 @@
             </ul>
           </article>
         </div>
-        <div class="notice" data-ar="مهم: التنبيهات استدلالية وقد تتضمن إيجابيات كاذبة. الاتصالات القصيرة أو العمليات المحمية قد لا تظهر؛ راجع كل نتيجة قبل اتخاذ قرار." data-en="Important: Alerts are heuristic and may be false positives. Short-lived connections or protected processes may not appear; review findings before taking action.">مهم: التنبيهات استدلالية وقد تتضمن إيجابيات كاذبة. الاتصالات القصيرة أو العمليات المحمية قد لا تظهر؛ راجع كل نتيجة قبل اتخاذ قرار.</div>
+        <div class="notice" data-ar="مهم: التنبيهات استدلالية وقد تتضمن إيجابيات كاذبة. النموذج الافتراضي عام وليس نموذجًا سيبرانيًا متخصصًا تم التحقق منه. اتصالات Syslog UDP غير مشفرة؛ لا تعرضها على الإنترنت. راجع النتائج قبل اتخاذ قرار." data-en="Important: Alerts are heuristic and may be false positives. The default model is general-purpose, not a validated cybersecurity specialist model. Syslog UDP is unencrypted; do not expose it to the public internet. Review findings before taking action.">مهم: التنبيهات استدلالية وقد تتضمن إيجابيات كاذبة. النموذج الافتراضي عام وليس نموذجًا سيبرانيًا متخصصًا تم التحقق منه. اتصالات Syslog UDP غير مشفرة؛ لا تعرضها على الإنترنت. راجع النتائج قبل اتخاذ قرار.</div>
       </div>
     </section>
 
