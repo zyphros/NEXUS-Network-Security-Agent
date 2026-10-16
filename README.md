@@ -42,6 +42,7 @@
 - Optionally explains alerts with Ollama on the same device. No cloud AI API or API key is required.
 - Keeps monitoring responsive while the local model generates an explanation.
 - Continues rule-based monitoring when Ollama is unavailable.
+- Optionally ingests warning-and-higher Syslog UDP messages and Wazuh `alerts.json` records as read-only events.
 - Stores application logs and reports in a per-user local data directory, outside the repository.
 - Uses bounded scans and a small, quantized 3B model by default to suit memory-constrained laptops.
 
@@ -88,11 +89,44 @@ Copy `.env.example` to `.env` and edit only the settings you need. `.env` is exc
 | `AI_MODEL` | `qwen2.5:3b` | Installed Ollama model name |
 | `AI_COOLDOWN_SECONDS` | `300` | Minimum time between AI requests |
 | `AI_TIMEOUT_SECONDS` | `120` | Maximum wait for an AI response |
+| `SYSLOG_UDP_ENABLED` | `false` | Enable the optional Syslog UDP listener |
+| `SYSLOG_UDP_HOST` | `127.0.0.1` | Interface address for the UDP listener |
+| `SYSLOG_UDP_PORT` | `5514` | UDP listener port |
+| `SYSLOG_UDP_MAX_SEVERITY` | `4` | Highest numeric Syslog severity reported (0 is most severe) |
+| `WAZUH_ALERTS_FILE` | empty | Optional path to a Wazuh `alerts.json` file |
+| `WAZUH_MINIMUM_LEVEL` | `7` | Minimum Wazuh rule level reported |
 | `MAX_CONNECTIONS_ALERT` | `150` | Established-connection alert threshold |
 | `MAX_NEW_DESTINATIONS_ALERT` | `25` | New remote IP/port pairs per scan |
 | `MAX_PROCESS_CONNECTIONS_ALERT` | `80` | Remote connections per process |
 
 Increase `POLL_SECONDS` to reduce scan frequency. Rule thresholds are configurable heuristics and may need adjustment for a particular device.
+
+## Security event integrations (optional)
+
+The first integration layer supports two read-only inputs:
+
+- **Syslog UDP:** disabled by default, binds to `127.0.0.1:5514` when enabled, and raises dashboard alerts for messages at warning severity or higher (Syslog PRI severity `0`–`4`).
+- **Wazuh JSON alerts:** tails new records appended to a local or mounted `alerts.json` file and reports alerts at level `7` or higher by default. Existing records are not replayed on startup.
+
+Add only the input you need to the local `.env` file. Example for a Wazuh manager file readable from this machine (use the actual mounted/share path on Windows):
+
+```dotenv
+WAZUH_ALERTS_FILE=C:\wazuh-share\alerts.json
+WAZUH_MINIMUM_LEVEL=7
+```
+
+Example for a local Syslog sender:
+
+```dotenv
+SYSLOG_UDP_ENABLED=true
+SYSLOG_UDP_HOST=127.0.0.1
+SYSLOG_UDP_PORT=5514
+SYSLOG_UDP_MAX_SEVERITY=4
+```
+
+For remote forwarding, set `SYSLOG_UDP_HOST` to an explicitly selected interface and configure the sender and host firewall yourself. Syslog UDP is unauthenticated and unencrypted: keep it on a trusted, segmented management network or use a protected relay/VPN; never expose the listener directly to the public internet. Validate the sender path before deployment. The receiver queues at most 500 events and handles at most 25 actionable events per monitor cycle to bound resource use.
+
+`AI_MODEL` can select another model available through the Ollama API, including a compatible security-tuned model. The default `qwen2.5:3b` is a small general-purpose model, not a validated cybersecurity model. Evaluate any alternative against representative, sanitized data before relying on its explanations. AI text is advisory and never triggers a response action.
 
 ## Repository layout
 
@@ -100,13 +134,15 @@ Increase `POLL_SECONDS` to reduce scan frequency. Rule thresholds are configurab
 .
 ├── network_agent_gui.py       # Native Tkinter desktop dashboard
 ├── network_threat_detection.py # Connection collection and rule-based monitoring
+├── security_event_ingest.py   # Bounded Syslog UDP and Wazuh JSON inputs
 ├── requirements.txt           # Minimal Python dependency
 ├── .env.example               # Safe configuration template
 ├── .gitignore                 # Excludes secrets and generated runtime data
 ├── docs/images/
 │   └── nexus-dashboard.png    # Redacted dashboard preview
 ├── tests/
-│   └── test_rule_detector.py  # Rule-detector unit tests
+│   ├── test_rule_detector.py  # Rule-detector unit tests
+│   └── test_security_event_ingest.py # Integration input tests
 ├── README.md                  # English project guide
 ├── README.ar.md               # Arabic project guide
 ├── setup_windows.bat          # First-time local setup
@@ -118,6 +154,7 @@ Increase `POLL_SECONDS` to reduce scan frequency. Rule thresholds are configurab
 ## Data and privacy
 
 - Connection snapshots include remote/local addresses and ports, process names when Windows permits access, and connection state.
+- Enabled integrations may include security-event descriptions, sender/source IPs, rule IDs, severity, and agent names in local reports. Review and protect these files as security-sensitive data.
 - The tool does not capture packet content, passwords, browser history, or credentials; it does not block connections or change firewall settings.
 - Optional AI explanations are sent only to the configured local Ollama service. Do not change `OLLAMA_URL` to a remote host if you intend to keep data on the device.
 - Logs and generated reports are stored under `%USERPROFILE%\.network_security_agent\data`, not in this repository.
@@ -126,6 +163,10 @@ Increase `POLL_SECONDS` to reduce scan frequency. Rule thresholds are configurab
 ## Limitations
 
 - This is connection-metadata monitoring, not packet capture or a full endpoint/network security product.
+- Integrations currently cover Syslog UDP and Wazuh JSON file tailing only; this is not a universal SIEM/EDR connector, a clustered data-center service, or a high-availability event pipeline.
+- The Wazuh file input must be readable from the machine running NEXUS. Network shares, permissions, event delivery, and firewall rules must be configured and secured by the operator.
+- Syslog UDP does not authenticate senders or encrypt traffic. Use it only on a trusted network or through a protected relay.
+- The project does not manage encryption keys, configure cryptographic systems, isolate endpoints, or enforce security policies.
 - Short-lived connections may start and end between scans.
 - Windows can restrict visibility into protected processes; the dashboard may show fewer connections without administrator permissions.
 - Threshold alerts can be false positives and should be investigated before drawing conclusions.
@@ -137,7 +178,7 @@ Increase `POLL_SECONDS` to reduce scan frequency. Rule thresholds are configurab
 The rule detector and dashboard can be smoke-tested with the installed environment:
 
 ```powershell
-python -m py_compile network_threat_detection.py network_agent_gui.py
+python -m py_compile network_threat_detection.py network_agent_gui.py security_event_ingest.py
 python -m unittest discover -s tests -v
 python network_threat_detection.py --once --no-ai
 ```
@@ -156,4 +197,6 @@ python network_threat_detection.py --once --no-ai
 
 ## License
 
-Copyright © 2026 zyphros. All rights reserved.  No license is granted for using, copying, modifying, or distributing this project. Contact the copyright holder for permission.
+Copyright © 2026 zyphros. All rights reserved.
+
+No license is granted for using, copying, modifying, or distributing this project. Contact the copyright holder for permission.

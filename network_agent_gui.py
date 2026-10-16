@@ -421,6 +421,9 @@ class NetworkAgentDashboard:
             self._set_monitor_stopped()
         elif event_type == "ollama_status":
             self.ollama_label.configure(text=event["text"], fg=event["color"])
+        elif event_type == "integration_status":
+            for source in event.get("sources", []):
+                self._add_event(f"تم تفعيل مصدر أمني للقراءة فقط: {source}", "success")
         elif event_type == "stopped":
             self._set_monitor_stopped()
 
