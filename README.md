@@ -1,8 +1,8 @@
 # NEXUS — Local Network Security Agent
 
-**A lightweight Windows desktop dashboard for monitoring network connection metadata, with optional AI explanations from a local Ollama model.**
+**A lightweight cross-platform desktop dashboard for monitoring network connection metadata, with optional AI explanations from a local Ollama model.**
 
-`Windows` · `Python` · `Tkinter` · `psutil` · `Ollama (optional)`
+`Windows` · `Linux` · `macOS` · `Python` · `Tkinter` · `psutil` · `Ollama (optional)`
 
 [العربية](README.ar.md) · [Repository](https://github.com/zyphros/NEXUS-Network-Security-Agent)
 
@@ -20,7 +20,8 @@
 - **Monitoring:** Reads connection metadata with `psutil`; it does not capture packet contents.
 - **AI:** Optional Ollama explanations run locally and are requested only after a rule-based alert.
 - **Safety:** Monitoring starts only when the user presses Start. The app does not block traffic or change firewall settings.
-- **Audience:** A small educational Windows project and portfolio demonstration, not a production security product.
+- **Platforms:** Windows, Linux, and macOS for connection-metadata monitoring; Tkinter is required for the desktop dashboard.
+- **Audience:** An educational, cross-platform portfolio project, not a production security product.
 
 ## Contents
 
@@ -37,7 +38,7 @@
 ## Highlights
 
 - Cyber-themed desktop dashboard with start/stop controls, live counters, a connection table, event feed, and local AI analysis panel.
-- Monitors Windows network connection metadata using `psutil`; no packet payloads, browsing contents, or credentials are collected.
+- Monitors network connection metadata exposed by Windows, Linux, or macOS through `psutil`; no packet payloads, browsing contents, or credentials are collected.
 - Applies explainable connection-count thresholds and a cooldown to reduce repeated alerts.
 - Optionally explains alerts with Ollama on the same device. No cloud AI API or API key is required.
 - Keeps monitoring responsive while the local model generates an explanation.
@@ -48,7 +49,7 @@
 
 ## Requirements
 
-- Windows 10/11
+- Windows 10/11, Linux, or macOS
 - Python 3.10 or later, including Tcl/Tk
 - Ollama for local AI explanations (optional for connection monitoring)
 - `qwen2.5:3b` in Ollama for the default local AI configuration
@@ -57,25 +58,25 @@ The default Qwen model is a quantized 3B model and downloads approximately 1.9 G
 
 ## Quick start
 
-1. Install Python and, if you want AI explanations, install and start [Ollama](https://ollama.com/).
+1. Install Python 3.10+ with Tk/Tcl support. On Linux, install your distribution's Tk package (commonly `python3-tk`) if it is not included. Install and start [Ollama](https://ollama.com/) only if you want AI explanations.
 2. Download the model once:
 
    ```powershell
    ollama pull qwen2.5:3b
    ```
 
-3. Double-click `setup_windows.bat` to create an isolated Python environment in your user profile and install the lightweight `psutil` dependency.
-4. Double-click `run_dashboard.bat` to open the interface.
+3. On Windows, double-click `setup_windows.bat`. On Linux or macOS, run `bash setup_unix.sh`. Both create an isolated Python environment in your user home and install `psutil`.
+4. On Windows, double-click `run_dashboard.bat`. On Linux or macOS, run `bash run_dashboard.sh`.
 5. Press **Start Monitoring** in the dashboard. Monitoring does not start until you press the button. Stop it with **Stop** or close the window.
 
-To use the terminal monitor instead of the dashboard:
+To use the terminal monitor instead of the dashboard, use `run_agent.bat` on Windows or `bash run_agent.sh` on Linux/macOS:
 
 ```powershell
 run_agent.bat --once --no-ai
 run_agent.bat --interval 10
 ```
 
-The first command performs one lightweight scan without AI; the second starts continuous monitoring with a 10-second interval.
+The first command performs one lightweight scan without AI; the second starts continuous monitoring with a 10-second interval. The same flags work with `bash run_agent.sh`.
 
 ## Configuration
 
@@ -126,6 +127,12 @@ SYSLOG_UDP_MAX_SEVERITY=4
 
 For remote forwarding, set `SYSLOG_UDP_HOST` to an explicitly selected interface and configure the sender and host firewall yourself. Syslog UDP is unauthenticated and unencrypted: keep it on a trusted, segmented management network or use a protected relay/VPN; never expose the listener directly to the public internet. Validate the sender path before deployment. The receiver queues at most 500 events and handles at most 25 actionable events per monitor cycle to bound resource use.
 
+## Cross-platform support
+
+The connection collector and read-only Syslog/Wazuh ingestion are designed for Windows, Linux, and macOS. The desktop UI additionally requires a Python installation with Tkinter/Tcl-Tk available; Linux distributions may package Tk separately. OS permissions and platform APIs affect which process and connection details `psutil` can expose. The project does not currently provide OS-specific endpoint-security or firewall control integrations.
+
+GitHub Actions runs the syntax checks and unit tests on Windows, Ubuntu Linux, and macOS. This CI coverage verifies the shared monitoring code and integrations; it is not a claim that every distribution, desktop environment, security product, or data-center platform is supported.
+
 `AI_MODEL` can select another model available through the Ollama API, including a compatible security-tuned model. The default `qwen2.5:3b` is a small general-purpose model, not a validated cybersecurity model. Evaluate any alternative against representative, sanitized data before relying on its explanations. AI text is advisory and never triggers a response action.
 
 ## Repository layout
@@ -135,6 +142,9 @@ For remote forwarding, set `SYSLOG_UDP_HOST` to an explicitly selected interface
 ├── network_agent_gui.py       # Native Tkinter desktop dashboard
 ├── network_threat_detection.py # Connection collection and rule-based monitoring
 ├── security_event_ingest.py   # Bounded Syslog UDP and Wazuh JSON inputs
+├── setup_unix.sh              # Linux/macOS Python environment setup
+├── run_dashboard.sh           # Linux/macOS desktop launch
+├── run_agent.sh               # Linux/macOS terminal launch
 ├── requirements.txt           # Minimal Python dependency
 ├── .env.example               # Safe configuration template
 ├── .gitignore                 # Excludes secrets and generated runtime data
@@ -143,6 +153,8 @@ For remote forwarding, set `SYSLOG_UDP_HOST` to an explicitly selected interface
 ├── tests/
 │   ├── test_rule_detector.py  # Rule-detector unit tests
 │   └── test_security_event_ingest.py # Integration input tests
+├── .github/workflows/
+│   └── cross-platform-tests.yml # Windows, Ubuntu, and macOS test matrix
 ├── README.md                  # English project guide
 ├── README.ar.md               # Arabic project guide
 ├── setup_windows.bat          # First-time local setup
@@ -153,11 +165,11 @@ For remote forwarding, set `SYSLOG_UDP_HOST` to an explicitly selected interface
 
 ## Data and privacy
 
-- Connection snapshots include remote/local addresses and ports, process names when Windows permits access, and connection state.
+- Connection snapshots include remote/local addresses and ports, process names when the operating system permits access, and connection state.
 - Enabled integrations may include security-event descriptions, sender/source IPs, rule IDs, severity, and agent names in local reports. Review and protect these files as security-sensitive data.
 - The tool does not capture packet content, passwords, browser history, or credentials; it does not block connections or change firewall settings.
 - Optional AI explanations are sent only to the configured local Ollama service. Do not change `OLLAMA_URL` to a remote host if you intend to keep data on the device.
-- Logs and generated reports are stored under `%USERPROFILE%\.network_security_agent\data`, not in this repository.
+- Logs and generated reports are stored under `~/.network_security_agent/data`, not in this repository.
 - `.env`, virtual environments, logs, reports, model files, and databases are excluded by `.gitignore`. Review `git status` before publishing.
 
 ## Limitations
@@ -168,7 +180,7 @@ For remote forwarding, set `SYSLOG_UDP_HOST` to an explicitly selected interface
 - Syslog UDP does not authenticate senders or encrypt traffic. Use it only on a trusted network or through a protected relay.
 - The project does not manage encryption keys, configure cryptographic systems, isolate endpoints, or enforce security policies.
 - Short-lived connections may start and end between scans.
-- Windows can restrict visibility into protected processes; the dashboard may show fewer connections without administrator permissions.
+- Operating-system permissions can restrict visibility into protected processes; the dashboard may show fewer connections without elevated permissions.
 - Threshold alerts can be false positives and should be investigated before drawing conclusions.
 - Local AI output is generated text, may be incorrect, and is advisory only. The program does not take automatic response actions.
 - Ollama inference may use significant CPU and memory while generating a report; it runs only after an alert and uses bounded generation settings.
@@ -177,7 +189,7 @@ For remote forwarding, set `SYSLOG_UDP_HOST` to an explicitly selected interface
 
 The rule detector and dashboard can be smoke-tested with the installed environment:
 
-```powershell
+```sh
 python -m py_compile network_threat_detection.py network_agent_gui.py security_event_ingest.py
 python -m unittest discover -s tests -v
 python network_threat_detection.py --once --no-ai
@@ -185,7 +197,7 @@ python network_threat_detection.py --once --no-ai
 
 ## العربية
 
-**NEXUS** تطبيق مكتبي محلي لنظام Windows لمراقبة البيانات الوصفية لاتصالات الشبكة، مع شرح اختياري للتنبيهات بواسطة نموذج Ollama محلي.
+**NEXUS** تطبيق مكتبي محلي متعدد الأنظمة لمراقبة البيانات الوصفية لاتصالات الشبكة، مع شرح اختياري للتنبيهات بواسطة نموذج Ollama محلي.
 
 - واجهة عربية بتصميم سيبراني تعرض الاتصالات والعدادات والتنبيهات.
 - لا يلتقط محتوى الحزم أو كلمات المرور ولا يغيّر إعدادات الشبكة.
@@ -193,7 +205,7 @@ python network_threat_detection.py --once --no-ai
 - التقارير والسجلات تبقى في مجلد بيانات المستخدم، وليس داخل المستودع.
 - التنبيهات مؤشرات تحتاج إلى مراجعة وليست إثباتًا على وجود هجوم.
 
-للبدء: ثبّت Python وOllama، ثم شغّل `ollama pull qwen2.5:3b`، وبعدها `setup_windows.bat` ثم `run_dashboard.bat`. تبدأ المراقبة فقط بعد الضغط على زر البدء.
+للبدء: ثبّت Python وOllama، ثم شغّل `ollama pull qwen2.5:3b`. في Windows استخدم `setup_windows.bat` و`run_dashboard.bat`؛ وفي Linux/macOS استخدم `bash setup_unix.sh` و`bash run_dashboard.sh`. تبدأ المراقبة فقط بعد الضغط على زر البدء.
 
 ## License
 

@@ -4,9 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#07111f">
-  <meta name="description" content="NEXUS is a local-first Windows network connection monitoring dashboard with rule-based alerts and optional on-device Ollama AI analysis.">
+  <meta name="description" content="NEXUS is a local-first Windows, Linux, and macOS network connection monitoring dashboard with rule-based alerts and optional on-device Ollama AI analysis.">
   <meta property="og:title" content="NEXUS — Local Network Security Agent">
-  <meta property="og:description" content="A lightweight Windows dashboard for local network connection monitoring.">
+  <meta property="og:description" content="A lightweight cross-platform dashboard for local network connection monitoring.">
   <meta property="og:image" content="images/nexus-dashboard.png">
   <title>NEXUS — وكيل أمان الشبكة المحلي</title>
   <style>
@@ -375,7 +375,7 @@
         <div class="hero-copy">
           <span class="eyebrow" data-ar="مراقبة شبكات محلية" data-en="Local-first network monitoring">مراقبة شبكات محلية</span>
           <h1 data-ar="درع الشبكة المحلي" data-en="Local Network Defense">درع الشبكة المحلي</h1>
-          <p class="hero-description" data-ar="لوحة مكتبية خفيفة لنظام Windows تساعدك على مراجعة اتصالات الشبكة والتنبيهات المبنية على قواعد، مع تحليل اختياري بواسطة ذكاء اصطناعي يعمل محليًا." data-en="A lightweight Windows desktop dashboard for inspecting network connections and rule-based alerts, with optional AI explanations running locally on your device.">لوحة مكتبية خفيفة لنظام Windows تساعدك على مراجعة اتصالات الشبكة والتنبيهات المبنية على قواعد، مع تحليل اختياري بواسطة ذكاء اصطناعي يعمل محليًا.</p>
+          <p class="hero-description" data-ar="لوحة مكتبية خفيفة لأنظمة Windows وLinux وmacOS تساعدك على مراجعة اتصالات الشبكة والتنبيهات المبنية على قواعد، مع تحليل اختياري بواسطة ذكاء اصطناعي يعمل محليًا." data-en="A lightweight Windows, Linux, and macOS desktop dashboard for inspecting network connections and rule-based alerts, with optional AI explanations running locally on your device.">لوحة مكتبية خفيفة لأنظمة Windows وLinux وmacOS تساعدك على مراجعة اتصالات الشبكة والتنبيهات المبنية على قواعد، مع تحليل اختياري بواسطة ذكاء اصطناعي يعمل محليًا.</p>
           <div class="actions">
             <a class="button button-primary" href="https://github.com/zyphros/NEXUS-Network-Security-Agent" target="_blank" rel="noopener noreferrer">
               <span data-ar="استكشف الكود على GitHub" data-en="Explore the source on GitHub">استكشف الكود على GitHub</span>
@@ -391,7 +391,7 @@
             <span class="tag">Tkinter</span>
             <span class="tag">psutil</span>
             <span class="tag">Ollama · optional</span>
-            <span class="tag">Windows 10/11</span>
+            <span class="tag">Windows · Linux · macOS</span>
           </div>
         </div>
         <div class="preview">
@@ -421,8 +421,8 @@
           <article class="feature-card"><span class="feature-icon" aria-hidden="true">02</span><h3 data-ar="قواعد قابلة للضبط" data-en="Configurable rules">قواعد قابلة للضبط</h3><p data-ar="يرصد تجاوز حدود الاتصالات والوجهات الجديدة واتصالات العمليات، مع فترة تهدئة تحد من تكرار التنبيهات." data-en="Flags connection-count, new-destination, and per-process thresholds, with cooldowns to reduce repeated alerts.">يرصد تجاوز حدود الاتصالات والوجهات الجديدة واتصالات العمليات، مع فترة تهدئة تحد من تكرار التنبيهات.</p></article>
           <article class="feature-card"><span class="feature-icon" aria-hidden="true">03</span><h3 data-ar="شرح ذكي اختياري" data-en="Optional AI explanations">شرح ذكي اختياري</h3><p data-ar="يمكن لـ Ollama المحلي تلخيص التنبيه بعد ظهوره؛ وتستمر المراقبة القائمة على القواعد حتى عند عدم توفره." data-en="A local Ollama model can summarize an alert after it occurs; rule-based monitoring continues if Ollama is unavailable.">يمكن لـ Ollama المحلي تلخيص التنبيه بعد ظهوره؛ وتستمر المراقبة القائمة على القواعد حتى عند عدم توفره.</p></article>
           <article class="feature-card"><span class="feature-icon" aria-hidden="true">04</span><h3 data-ar="مصمم ليبقى خفيفًا" data-en="Designed to stay lightweight">مصمم ليبقى خفيفًا</h3><p data-ar="فواصل الفحص قابلة للتغيير، والتحليل الذكي اختياري ومحدد المهلة ولا يُطلب في كل دورة." data-en="Polling intervals are adjustable, and optional AI uses bounded generation and is not called on every scan.">فواصل الفحص قابلة للتغيير، والتحليل الذكي اختياري ومحدد المهلة ولا يُطلب في كل دورة.</p></article>
-          <article class="feature-card"><span class="feature-icon" aria-hidden="true">05</span><h3 data-ar="إعداد وتشغيل بسيطان" data-en="Simple Windows setup">إعداد وتشغيل بسيطان</h3><p data-ar="ملفات تشغيل وإعداد مخصصة لويندوز، مع نسخة طرفية للاستخدام دون الواجهة الرسومية." data-en="Windows setup and launch scripts, plus a command-line option for running without the GUI.">ملفات تشغيل وإعداد مخصصة لويندوز، مع نسخة طرفية للاستخدام دون الواجهة الرسومية.</p></article>
-          <article class="feature-card"><span class="feature-icon" aria-hidden="true">06</span><h3 data-ar="توثيق واختبارات" data-en="Docs and tests">توثيق واختبارات</h3><p data-ar="أدلة استخدام باللغتين واختبارات لوظائف كشف القواعد وتجنب التنبيهات المكررة." data-en="Bilingual project guides and unit tests for rule detection and duplicate-alert cooldown behavior.">أدلة استخدام باللغتين واختبارات لوظائف كشف القواعد وتجنب التنبيهات المكررة.</p></article>
+          <article class="feature-card"><span class="feature-icon" aria-hidden="true">05</span><h3 data-ar="إعداد متعدد الأنظمة" data-en="Cross-platform setup">إعداد متعدد الأنظمة</h3><p data-ar="ملفات إعداد وتشغيل لـ Windows وLinux وmacOS، مع خيار سطر أوامر." data-en="Setup and launch scripts for Windows, Linux, and macOS, plus a command-line option.">ملفات إعداد وتشغيل لـ Windows وLinux وmacOS، مع خيار سطر أوامر.</p></article>
+          <article class="feature-card"><span class="feature-icon" aria-hidden="true">06</span><h3 data-ar="توثيق واختبارات متعددة الأنظمة" data-en="Cross-platform tests">توثيق واختبارات متعددة الأنظمة</h3><p data-ar="أدلة استخدام باللغتين واختبارات آلية على Windows وLinux وmacOS." data-en="Bilingual guides and automated tests on Windows, Linux, and macOS.">أدلة استخدام باللغتين واختبارات آلية على Windows وLinux وmacOS.</p></article>
           <article class="feature-card"><span class="feature-icon" aria-hidden="true">07</span><h3 data-ar="مدخلات أمنية أولية" data-en="Initial security event inputs">مدخلات أمنية أولية</h3><p data-ar="استقبال اختياري لـ Syslog عبر UDP وقراءة إضافات Wazuh alerts.json؛ للعرض والتحليل الاستشاري فقط." data-en="Optional Syslog UDP and Wazuh alerts.json inputs, for display and advisory analysis only.">استقبال اختياري لـ Syslog عبر UDP وقراءة إضافات Wazuh alerts.json؛ للعرض والتحليل الاستشاري فقط.</p></article>
         </div>
       </div>
@@ -435,7 +435,7 @@
           <p data-ar="تسلسل واضح يبدأ محليًا وينتهي بمؤشر يحتاج إلى مراجعة بشرية." data-en="A straightforward local workflow that produces indicators for human review.">تسلسل واضح يبدأ محليًا وينتهي بمؤشر يحتاج إلى مراجعة بشرية.</p>
         </div>
         <div class="flow">
-          <article class="flow-step"><h3 data-ar="جمع محدود" data-en="Bounded collection">جمع محدود</h3><p data-ar="يقرأ psutil بيانات الاتصالات التي يتيحها Windows." data-en="psutil reads connection metadata exposed by Windows.">يقرأ psutil بيانات الاتصالات التي يتيحها Windows.</p></article>
+          <article class="flow-step"><h3 data-ar="جمع محدود" data-en="Bounded collection">جمع محدود</h3><p data-ar="يقرأ psutil بيانات الاتصالات التي يتيحها نظام التشغيل." data-en="psutil reads connection metadata exposed by the operating system.">يقرأ psutil بيانات الاتصالات التي يتيحها نظام التشغيل.</p></article>
           <article class="flow-step"><h3 data-ar="تقييم القواعد" data-en="Rule evaluation">تقييم القواعد</h3><p data-ar="تُقارن الأعداد والوجهات بحدود قابلة للضبط." data-en="Counts and destinations are checked against adjustable thresholds.">تُقارن الأعداد والوجهات بحدود قابلة للضبط.</p></article>
           <article class="flow-step"><h3 data-ar="عرض التنبيه" data-en="Alert display">عرض التنبيه</h3><p data-ar="تظهر المؤشرات في اللوحة مع فترة تهدئة للتكرار." data-en="Indicators appear in the dashboard with duplicate-alert cooldowns.">تظهر المؤشرات في اللوحة مع فترة تهدئة للتكرار.</p></article>
           <article class="flow-step"><h3 data-ar="شرح اختياري" data-en="Optional explanation">شرح اختياري</h3><p data-ar="عند التفعيل، يلخص Ollama المحلي التنبيه للمساعدة على مراجعته." data-en="When enabled, local Ollama summarizes the alert to help with review.">عند التفعيل، يلخص Ollama المحلي التنبيه للمساعدة على مراجعته.</p></article>
@@ -504,17 +504,22 @@
       <div class="shell">
         <div class="section-heading">
           <h2 data-ar="ابدأ بتجربته" data-en="Try the project">ابدأ بتجربته</h2>
-          <p data-ar="التطبيق مخصص لـ Windows. يمكن تشغيل المراقبة دون Ollama، وإضافة التحليل المحلي اختيارية." data-en="The app targets Windows. Monitoring works without Ollama; local AI analysis is optional.">التطبيق مخصص لـ Windows. يمكن تشغيل المراقبة دون Ollama، وإضافة التحليل المحلي اختيارية.</p>
+          <p data-ar="يدعم التطبيق Windows وLinux وmacOS. يمكن تشغيل المراقبة دون Ollama؛ التحليل المحلي اختياري." data-en="The app supports Windows, Linux, and macOS. Monitoring works without Ollama; local AI analysis is optional.">يدعم التطبيق Windows وLinux وmacOS. يمكن تشغيل المراقبة دون Ollama؛ التحليل المحلي اختياري.</p>
           <div class="requirements">
-            <span>Windows 10 / 11</span><span>Python 3.10+</span><span>Tcl/Tk</span><span>Ollama · optional</span>
+            <span>Windows</span><span>Linux</span><span>macOS</span><span>Python 3.10+</span><span>Tcl/Tk</span><span>Ollama · optional</span>
           </div>
         </div>
         <div class="install">
           <article class="install-card">
             <h3 data-ar="تشغيل لوحة التحكم" data-en="Launch the dashboard">تشغيل لوحة التحكم</h3>
-            <p data-ar="نزّل المشروع، ثم شغّل ملفات الإعداد والواجهة." data-en="Download the project, then run its setup and dashboard scripts.">نزّل المشروع، ثم شغّل ملفات الإعداد والواجهة.</p>
-            <pre>setup_windows.bat
-run_dashboard.bat</pre>
+            <p data-ar="نزّل المشروع واستخدم ملفات الإعداد والتشغيل المناسبة لنظامك." data-en="Download the project and use the setup and launch scripts for your operating system.">نزّل المشروع واستخدم ملفات الإعداد والتشغيل المناسبة لنظامك.</p>
+            <pre>Windows:
+setup_windows.bat
+run_dashboard.bat
+
+Linux / macOS:
+bash setup_unix.sh
+bash run_dashboard.sh</pre>
           </article>
           <article class="install-card">
             <h3 data-ar="تفعيل التحليل المحلي (اختياري)" data-en="Enable local AI (optional)">تفعيل التحليل المحلي (اختياري)</h3>

@@ -50,10 +50,12 @@ class NetworkAgentDashboard:
         self.root.after(350, self._check_ollama)
 
     def _configure_styles(self) -> None:
-        self.font_small = tkfont.Font(family="Segoe UI", size=9)
-        self.font_heading = tkfont.Font(family="Segoe UI Semibold", size=19)
-        self.font_number = tkfont.Font(family="Segoe UI Semibold", size=25)
-        self.font_mono = tkfont.Font(family="Cascadia Code", size=9)
+        self.font_family = tkfont.nametofont("TkDefaultFont", root=self.root).cget("family")
+        self.mono_family = tkfont.nametofont("TkFixedFont", root=self.root).cget("family")
+        self.font_small = tkfont.Font(family=self.font_family, size=9)
+        self.font_heading = tkfont.Font(family=self.font_family, size=19, weight="bold")
+        self.font_number = tkfont.Font(family=self.font_family, size=25, weight="bold")
+        self.font_mono = tkfont.Font(family=self.mono_family, size=9)
 
         style = ttk.Style(self.root)
         style.theme_use("clam")
@@ -71,7 +73,7 @@ class NetworkAgentDashboard:
             background=PANEL_LIGHT,
             foreground=CYAN,
             relief="flat",
-            font=("Segoe UI Semibold", 9),
+            font=(self.font_family, 9, "bold"),
         )
         style.map(
             "Cyber.Treeview",
@@ -111,7 +113,7 @@ class NetworkAgentDashboard:
             text="NEXUS",
             bg=BG,
             fg=CYAN,
-            font=("Segoe UI Semibold", 11),
+            font=(self.font_family, 11, "bold"),
         ).pack(anchor="w")
         tk.Label(
             brand,
@@ -130,10 +132,10 @@ class NetworkAgentDashboard:
 
         live_box = tk.Frame(header, bg=PANEL, highlightthickness=1, highlightbackground=LINE)
         live_box.pack(side="right", padx=(12, 0), pady=5)
-        self.live_dot = tk.Label(live_box, text="●", bg=PANEL, fg=MUTED, font=("Segoe UI", 12))
+        self.live_dot = tk.Label(live_box, text="●", bg=PANEL, fg=MUTED, font=(self.font_family, 12))
         self.live_dot.pack(side="left", padx=(13, 7), pady=10)
         self.live_label = tk.Label(
-            live_box, text="جاهز", bg=PANEL, fg=MUTED, font=("Segoe UI Semibold", 9)
+            live_box, text="جاهز", bg=PANEL, fg=MUTED, font=(self.font_family, 9, "bold")
         )
         self.live_label.pack(side="left", padx=(0, 14), pady=10)
 
@@ -142,7 +144,7 @@ class NetworkAgentDashboard:
             text="OLLAMA  •  جارٍ التحقق",
             bg=BG,
             fg=AMBER,
-            font=("Segoe UI Semibold", 9),
+            font=(self.font_family, 9, "bold"),
         )
         self.ollama_label.pack(side="right", padx=(10, 2), pady=15)
 
@@ -177,7 +179,7 @@ class NetworkAgentDashboard:
             activebackground=PANEL,
             activeforeground=CYAN,
             selectcolor=PANEL_LIGHT,
-            font=("Segoe UI Semibold", 9),
+            font=(self.font_family, 9, "bold"),
             bd=0,
             highlightthickness=0,
         )
@@ -198,7 +200,7 @@ class NetworkAgentDashboard:
             padx=16,
             pady=9,
             cursor="hand2",
-            font=("Segoe UI Semibold", 9),
+            font=(self.font_family, 9, "bold"),
         )
         self.start_button.pack(side="left", padx=(0, 8))
         self.stop_button = tk.Button(
@@ -214,7 +216,7 @@ class NetworkAgentDashboard:
             padx=15,
             pady=9,
             cursor="hand2",
-            font=("Segoe UI Semibold", 9),
+            font=(self.font_family, 9, "bold"),
             state="disabled",
         )
         self.stop_button.pack(side="left")
@@ -233,7 +235,7 @@ class NetworkAgentDashboard:
             card = tk.Frame(metrics, bg=PANEL, highlightthickness=1, highlightbackground=LINE)
             card.grid(row=0, column=index, sticky="nsew", padx=(0 if index == 0 else 7, 0 if index == 3 else 7))
             tk.Frame(card, bg=accent, height=2).pack(fill="x")
-            tk.Label(card, text=title, bg=PANEL, fg=MUTED, font=("Segoe UI Semibold", 8)).pack(
+            tk.Label(card, text=title, bg=PANEL, fg=MUTED, font=(self.font_family, 8, "bold")).pack(
                 anchor="w", padx=13, pady=(11, 1)
             )
             value = tk.Label(card, text="—", bg=PANEL, fg=TEXT, font=self.font_number)
@@ -294,7 +296,7 @@ class NetworkAgentDashboard:
             insertbackground=CYAN,
             relief="flat",
             wrap="word",
-            font=("Segoe UI", 10),
+            font=(self.font_family, 10),
             padx=14,
             pady=12,
             state="disabled",
@@ -332,17 +334,17 @@ class NetworkAgentDashboard:
             relief="flat",
             bd=0,
             cursor="hand2",
-            font=("Segoe UI Semibold", 8),
+            font=(self.font_family, 8, "bold"),
         )
         reports_button.pack(side="right")
 
     def _section_header(self, parent: tk.Widget, title: str, detail: str) -> None:
         bar = tk.Frame(parent, bg=PANEL)
         bar.pack(fill="x", padx=12, pady=(11, 9))
-        tk.Label(bar, text=title, bg=PANEL, fg=TEXT, font=("Segoe UI Semibold", 9)).pack(
+        tk.Label(bar, text=title, bg=PANEL, fg=TEXT, font=(self.font_family, 9, "bold")).pack(
             side="left"
         )
-        tk.Label(bar, text=detail.upper(), bg=PANEL, fg=CYAN, font=("Segoe UI", 8)).pack(
+        tk.Label(bar, text=detail.upper(), bg=PANEL, fg=CYAN, font=(self.font_family, 8)).pack(
             side="right"
         )
 

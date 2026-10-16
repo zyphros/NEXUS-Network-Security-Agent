@@ -1,5 +1,5 @@
 """
-Lightweight, local network-connection monitoring agent for Windows and desktop use.
+Lightweight, local network-connection monitoring agent for Windows, macOS, and Linux.
 
 This tool inspects connection metadata only. It does not capture packet contents,
 send traffic, or take action on the network. Ollama is used locally to explain
@@ -29,7 +29,7 @@ from security_event_ingest import (
 
 
 APP_DIR = Path(__file__).resolve().parent
-DATA_DIR = Path(os.getenv("USERPROFILE", str(APP_DIR))) / ".network_security_agent" / "data"
+DATA_DIR = Path.home() / ".network_security_agent" / "data"
 REPORTS_DIR = DATA_DIR / "threat_reports"
 LOG_FILE = DATA_DIR / "network_agent.log"
 DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -101,7 +101,7 @@ def _visible_connections() -> List[Any]:
         return psutil.net_connections(kind="inet")
     except (psutil.AccessDenied, OSError) as exc:
         logger.warning(
-            "Windows restricted system-wide connection details (%s); "
+            "The operating system restricted system-wide connection details (%s); "
             "checking connections visible to this user only.",
             exc,
         )

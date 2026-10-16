@@ -1,10 +1,33 @@
 import unittest
+from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import network_threat_detection as agent
 
 
 class RuleDetectorTests(unittest.TestCase):
+    def test_runtime_data_directory_uses_the_current_users_home(self):
+        self.assertEqual(agent.DATA_DIR, Path.home() / ".network_security_agent" / "data")
+        self.assertNotEqual(agent.DATA_DIR, agent.APP_DIR / ".network_security_agent" / "data")
+
+    def test_snapshot_collection_uses_a_platform_neutral_connection_shape(self):
+        connection = SimpleNamespace(
+            raddr=SimpleNamespace(ip="192.0.2.10", port=443),
+            laddr=SimpleNamespace(ip="127.0.0.1", port=50123),
+            pid=None,
+            status="ESTABLISHED",
+        )
+        with (
+            patch.object(agent, "_visible_connections", return_value=[connection]),
+            patch.object(agent.psutil, "net_io_counters", return_value=None),
+        ):
+            snapshot = agent.collect_snapshot()
+
+        self.assertEqual(len(snapshot["connections"]), 1)
+        self.assertEqual(snapshot["connections"][0]["remote_ip"], "192.0.2.10")
+        self.assertEqual(snapshot["connections"][0]["local"], "127.0.0.1:50123")
+
     def make_connection(self, ip: str, process: str = "test.exe", status: str = "ESTABLISHED"):
         return {
             "pid": 123,
