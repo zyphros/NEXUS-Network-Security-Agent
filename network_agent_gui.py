@@ -13,6 +13,7 @@ from urllib.error import URLError
 from urllib.request import urlopen
 
 import network_threat_detection as agent
+from command_center import isolation_recommendation, parse_command
 
 
 BG = "#07111f"
@@ -42,6 +43,13 @@ class NetworkAgentDashboard:
         self.scan_count = 0
         self.alert_count = 0
         self.ai_busy = False
+        self.command_busy = False
+        self.ollama_available = False
+        self.latest_snapshot: Dict[str, Any] = {}
+        self.latest_summary: Dict[str, Any] = {}
+        self.recent_alerts: List[Dict[str, Any]] = []
+        self.recent_security_events: List[Dict[str, Any]] = []
+        self.question_history: List[Dict[str, str]] = []
 
         self._configure_styles()
         self._build_layout()
@@ -288,9 +296,14 @@ class NetworkAgentDashboard:
 
         right = tk.Frame(workspace, bg=PANEL, highlightthickness=1, highlightbackground=LINE)
         right.grid(row=0, column=1, sticky="nsew", padx=(7, 0))
-        self._section_header(right, "تحليل التنبيه المحلي", agent.AI_MODEL)
+        self._section_header(right, "مساعد NEXUS", "محلي")
+        assistant_tabs = ttk.Notebook(right)
+        assistant_tabs.pack(fill="both", expand=True, padx=12, pady=(0, 12))
+
+        ai_page = tk.Frame(assistant_tabs, bg=PANEL)
+        assistant_tabs.add(ai_page, text="تحليل التنبيه")
         self.ai_text = tk.Text(
-            right,
+            ai_page,
             bg="#091421",
             fg="#c7d6e5",
             insertbackground=CYAN,
@@ -301,7 +314,7 @@ class NetworkAgentDashboard:
             pady=12,
             state="disabled",
         )
-        self.ai_text.pack(fill="both", expand=True, padx=12, pady=(0, 10))
+        self.ai_text.pack(fill="both", expand=True, padx=5, pady=(5, 8))
         self.ai_text.configure(state="normal")
         self.ai_text.insert(
             "end",
@@ -312,6 +325,87 @@ class NetworkAgentDashboard:
             "التنبيهات مؤشرات للفحص وليست دليلًا قاطعًا على وجود هجوم.",
         )
         self.ai_text.configure(state="disabled")
+        self.recommendation_text = tk.Text(
+            ai_page,
+            height=4,
+            bg="#152233",
+            fg=AMBER,
+            relief="flat",
+            wrap="word",
+            font=(self.font_family, 9),
+            padx=10,
+            pady=8,
+            state="disabled",
+        )
+        self.recommendation_text.pack(fill="x", padx=5, pady=(0, 5))
+        self._set_recommendation(
+            "اقتراحات العزل استشارية فقط؛ لا ينفذ NEXUS أي حظر أو تغيير للنظام."
+        )
+
+        command_page = tk.Frame(assistant_tabs, bg=PANEL)
+        assistant_tabs.add(command_page, text="الأسئلة والأوامر")
+        tk.Label(
+            command_page,
+            text=(
+                "أوامر داخل التطبيق فقط: مساعدة، الحالة، التنبيهات، الاتصالات، "
+                "التوصيات، ابدأ، أوقف، التقارير.\n"
+                "الأسئلة الحرة تُرسل إلى Ollama عند توفره. لا تُنفذ أوامر النظام."
+            ),
+            bg=PANEL,
+            fg=MUTED,
+            justify="right",
+            wraplength=500,
+            font=self.font_small,
+        ).pack(fill="x", padx=8, pady=(8, 4))
+        self.command_text = tk.Text(
+            command_page,
+            bg="#091421",
+            fg=TEXT,
+            insertbackground=CYAN,
+            relief="flat",
+            wrap="word",
+            font=(self.font_family, 9),
+            padx=10,
+            pady=9,
+            state="disabled",
+        )
+        self.command_text.tag_configure("user", foreground=CYAN)
+        self.command_text.tag_configure("assistant", foreground=TEXT)
+        self.command_text.tag_configure("error", foreground=RED)
+        self.command_text.pack(fill="both", expand=True, padx=8, pady=5)
+        self._append_command_message(
+            "NEXUS",
+            "اكتب «مساعدة» لعرض الأوامر. يمكنك السؤال عن الحالة والتنبيهات؛ "
+            "الإجابات الذكية اختيارية وتعمل عبر Ollama.",
+        )
+        command_controls = tk.Frame(command_page, bg=PANEL)
+        command_controls.pack(fill="x", padx=8, pady=(0, 8))
+        self.command_entry = tk.Entry(
+            command_controls,
+            bg=PANEL_LIGHT,
+            fg=TEXT,
+            insertbackground=CYAN,
+            relief="flat",
+            font=(self.font_family, 10),
+        )
+        self.command_entry.pack(side="left", fill="x", expand=True, ipady=8, padx=(0, 7))
+        self.command_entry.bind("<Return>", self.submit_command)
+        self.command_send_button = tk.Button(
+            command_controls,
+            text="إرسال",
+            command=self.submit_command,
+            bg="#0d665c",
+            fg="#eafff6",
+            activebackground="#138272",
+            activeforeground="white",
+            relief="flat",
+            bd=0,
+            padx=12,
+            pady=7,
+            cursor="hand2",
+            font=(self.font_family, 9, "bold"),
+        )
+        self.command_send_button.pack(side="right")
 
         footer = tk.Frame(outer, bg=BG)
         footer.pack(fill="x", pady=(11, 0))
@@ -422,7 +516,29 @@ class NetworkAgentDashboard:
             self.status_text.configure(text="خطأ في المراقبة  •  راجع سجل التشغيل المحلي", fg=RED)
             self._set_monitor_stopped()
         elif event_type == "ollama_status":
+            self.ollama_available = bool(event.get("available"))
             self.ollama_label.configure(text=event["text"], fg=event["color"])
+        elif event_type == "command_answer":
+            self.command_busy = False
+            self.command_send_button.configure(state="normal")
+            question = event.get("question", "")
+            answer = event.get("answer", "لم يصل رد.")
+            self.question_history = (
+                self.question_history
+                + [
+                    {"speaker": "user", "text": question},
+                    {"speaker": "assistant", "text": answer},
+                ]
+            )[-6:]
+            self._append_command_message("NEXUS", answer)
+        elif event_type == "command_error":
+            self.command_busy = False
+            self.command_send_button.configure(state="normal")
+            self._append_command_message(
+                "NEXUS",
+                f"تعذر الحصول على الإجابة: {event.get('message', 'خطأ غير معروف')}",
+                "error",
+            )
         elif event_type == "integration_status":
             for source in event.get("sources", []):
                 self._add_event(f"تم تفعيل مصدر أمني للقراءة فقط: {source}", "success")
@@ -431,6 +547,8 @@ class NetworkAgentDashboard:
 
     def _update_snapshot(self, snapshot: Dict[str, Any], summary: Dict[str, Any]) -> None:
         self.scan_count += 1
+        self.latest_snapshot = snapshot
+        self.latest_summary = summary
         self.metric_values["active"].configure(text=str(summary["active_connections"]))
         self.metric_values["remote"].configure(text=str(summary["total_remote_connections"]))
         self.metric_values["new"].configure(text=str(summary["new_destinations"]))
@@ -457,8 +575,15 @@ class NetworkAgentDashboard:
         alerts = event.get("alerts", [])
         if not alerts:
             return
+        self.recent_alerts = (self.recent_alerts + alerts)[-20:]
+        security_events = event.get("security_events", [])
+        if isinstance(security_events, list):
+            self.recent_security_events = (
+                self.recent_security_events + security_events
+            )[-20:]
         self.alert_count += len(alerts)
         self.metric_values["alerts"].configure(text=str(self.alert_count))
+        self._set_recommendation(isolation_recommendation(event))
         for alert in alerts:
             self._add_event(f"اشتباه شذوذ  •  {alert['detail']}", "alert")
         self.status_text.configure(text="رُصد اشتباه شذوذ  •  راجع سجل الأحداث", fg=AMBER)
@@ -493,6 +618,147 @@ class NetworkAgentDashboard:
         self.ai_text.configure(state="disabled")
         self._add_event(f"Local AI explanation saved: {event.get('report', '')}", "success")
         self.status_text.configure(text="المراقبة تعمل  •  اكتمل شرح الذكاء الاصطناعي المحلي", fg=GREEN)
+
+    def _set_recommendation(self, text: str) -> None:
+        self.recommendation_text.configure(state="normal")
+        self.recommendation_text.delete("1.0", "end")
+        self.recommendation_text.insert("end", f"اقتراح مراجعة/عزل (استشاري):\n{text}")
+        self.recommendation_text.configure(state="disabled")
+
+    def _append_command_message(self, speaker: str, text: str, tag: str = "assistant") -> None:
+        self.command_text.configure(state="normal")
+        timestamp = datetime.now().strftime("%H:%M:%S")
+        self.command_text.insert("end", f"{timestamp}  {speaker}\n", tag)
+        self.command_text.insert("end", f"{text}\n\n", tag)
+        line_count = int(self.command_text.index("end-1c").split(".")[0])
+        if line_count > 240:
+            self.command_text.delete("1.0", f"{line_count - 240}.0")
+        self.command_text.see("end")
+        self.command_text.configure(state="disabled")
+
+    def submit_command(self, _event: Optional[Any] = None) -> str:
+        question = self.command_entry.get().strip()
+        if not question or self.command_busy:
+            return "break"
+        self.command_entry.delete(0, "end")
+        self._append_command_message("أنت", question, "user")
+
+        command = parse_command(question)
+        if command is not None:
+            self._run_safe_command(command)
+            return "break"
+        if len(question) > 500:
+            self._append_command_message(
+                "NEXUS",
+                "الأسئلة الحرة محدودة بـ500 حرف للمحافظة على استجابة التطبيق.",
+                "error",
+            )
+            return "break"
+        if not self.ollama_available:
+            self._append_command_message(
+                "NEXUS",
+                "Ollama غير متاح الآن. الأوامر المحددة تعمل دون Ollama؛ "
+                "شغّله محليًا لطرح أسئلة حرة.",
+                "error",
+            )
+            return "break"
+
+        context = {
+            "monitoring": self.monitor_active,
+            "scan_count": self.scan_count,
+            "summary": self.latest_summary,
+            "sample_connections": self.latest_summary.get("sample_connections", []),
+            "recent_alerts": self.recent_alerts,
+        }
+        history = list(self.question_history)
+        self.command_busy = True
+        self.command_send_button.configure(state="disabled")
+        self._append_command_message("NEXUS", "جارٍ إعداد إجابة من Ollama المحلي…")
+        threading.Thread(
+            target=self._question_worker,
+            args=(question, context, history),
+            name="local-command-question",
+            daemon=True,
+        ).start()
+        return "break"
+
+    def _run_safe_command(self, command: str) -> None:
+        if command == "help":
+            response = (
+                "الأوامر المتاحة: مساعدة، الحالة، التنبيهات، الاتصالات، التوصيات، "
+                "ابدأ، أوقف، التقارير. أي نص آخر يُعامل كسؤال إلى Ollama عند توفره؛ "
+                "لا تُنفذ أوامر shell أو أوامر نظام."
+            )
+        elif command == "status":
+            if not self.latest_snapshot:
+                response = "لم يكتمل فحص بعد. استخدم «ابدأ» لبدء المراقبة يدويًا."
+            else:
+                response = (
+                    f"حالة المراقبة: {'تعمل' if self.monitor_active else 'متوقفة'}؛ "
+                    f"عدد الفحوص: {self.scan_count}؛ "
+                    f"الاتصالات النشطة: {self.latest_summary.get('active_connections', 0)}؛ "
+                    f"الاتصالات البعيدة: {self.latest_summary.get('total_remote_connections', 0)}؛ "
+                    f"التنبيهات: {self.alert_count}."
+                )
+        elif command == "alerts":
+            response = (
+                "\n".join(
+                    f"- {alert.get('rule', 'unknown')}: {alert.get('detail', '')[:300]}"
+                    for alert in self.recent_alerts[-5:]
+                )
+                or "لا توجد تنبيهات حديثة في هذه الجلسة."
+            )
+        elif command == "connections":
+            connections = self.latest_summary.get("sample_connections", [])[:5]
+            response = (
+                "\n".join(
+                    f"- {item.get('process', 'unknown')}: "
+                    f"{item.get('remote_ip', '')}:{item.get('remote_port', '')} "
+                    f"({item.get('status', 'UNKNOWN')})"
+                    for item in connections
+                )
+                or "لا توجد عينة اتصالات بعد؛ ابدأ المراقبة أولًا."
+            )
+        elif command == "recommendations":
+            event = {
+                "alerts": self.recent_alerts,
+                "security_events": self.recent_security_events,
+            }
+            response = isolation_recommendation(event)
+        elif command == "start":
+            self.start_monitor()
+            response = "بدأت المراقبة." if self.monitor_active else "تعذر بدء المراقبة؛ راجع الإعدادات."
+        elif command == "stop":
+            if self.monitor_active:
+                self.stop_monitor()
+                response = "طُلب إيقاف المراقبة بعد الفحص الحالي."
+            else:
+                response = "المراقبة متوقفة بالفعل."
+        else:
+            opened = self.open_reports()
+            response = (
+                "تم فتح مجلد التقارير المحلي."
+                if opened
+                else "تعذر فتح مجلد التقارير؛ راجع رسالة الخطأ."
+            )
+        self._append_command_message("NEXUS", response)
+
+    def _question_worker(
+        self,
+        question: str,
+        context: Dict[str, Any],
+        history: List[Dict[str, str]],
+    ) -> None:
+        try:
+            answer = agent.ask_local_question(question, context, history)
+            self.events.put(
+                {"type": "command_answer", "question": question, "answer": answer}
+            )
+        except Exception as exc:
+            agent.logger.exception("Local dashboard question failed")
+            self.events.put(
+                {"type": "command_error", "message": f"{type(exc).__name__}: {exc}"}
+            )
 
     def _add_event(self, message: str, tag: str = "normal") -> None:
         self.event_text.configure(state="normal")
@@ -537,13 +803,23 @@ class NetworkAgentDashboard:
             text = f"OLLAMA  •  {agent.AI_MODEL} {'جاهز' if available else 'النموذج غير موجود'}"
             color = GREEN if available else AMBER
         except (URLError, TimeoutError, OSError, ValueError, json.JSONDecodeError):
+            available = False
             text = "OLLAMA  •  غير متصل"
             color = RED
-        self.events.put({"type": "ollama_status", "text": text, "color": color})
+        self.events.put(
+            {"type": "ollama_status", "text": text, "color": color, "available": available}
+        )
 
-    def open_reports(self) -> None:
-        agent.REPORTS_DIR.mkdir(parents=True, exist_ok=True)
-        webbrowser.open(agent.REPORTS_DIR.as_uri())
+    def open_reports(self) -> bool:
+        try:
+            agent.REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+            opened = webbrowser.open(agent.REPORTS_DIR.as_uri())
+        except (OSError, webbrowser.Error) as exc:
+            messagebox.showerror("تعذر فتح التقارير", str(exc))
+            return False
+        if not opened:
+            messagebox.showerror("تعذر فتح التقارير", str(agent.REPORTS_DIR))
+        return opened
 
     def _on_close(self) -> None:
         if self.monitor_active and self.stop_event is not None:

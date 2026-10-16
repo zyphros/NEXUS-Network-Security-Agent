@@ -18,7 +18,9 @@
 
 - **Purpose:** Make local network connection activity and simple rule-based alerts easy to inspect from a desktop dashboard.
 - **Monitoring:** Reads connection metadata with `psutil`; it does not capture packet contents.
-- **AI:** Optional Ollama explanations run locally and are requested only after a rule-based alert.
+- **AI:** Optional Ollama can explain alerts or answer a dashboard question when requested.
+- **Command center:** Ask questions about the current dashboard and use a small allowlist of in-app commands; arbitrary shell or operating-system commands are never executed.
+- **Isolation:** Shows cautious, human-reviewed isolation recommendations for suspicious activity. NEXUS does not kill processes, block traffic, or change firewall settings.
 - **Safety:** Monitoring starts only when the user presses Start. The app does not block traffic or change firewall settings.
 - **Platforms:** Windows, Linux, and macOS for connection-metadata monitoring; Tkinter is required for the desktop dashboard.
 - **Audience:** An educational, cross-platform portfolio project, not a production security product.
@@ -41,8 +43,10 @@
 - Monitors network connection metadata exposed by Windows, Linux, or macOS through `psutil`; no packet payloads, browsing contents, or credentials are collected.
 - Applies explainable connection-count thresholds and a cooldown to reduce repeated alerts.
 - Optionally explains alerts with Ollama on the same device. No cloud AI API or API key is required.
-- Keeps monitoring responsive while the local model generates an explanation.
+- Keeps monitoring responsive while the local model generates an explanation or answer.
 - Continues rule-based monitoring when Ollama is unavailable.
+- Offers an in-app command center for status, recent alerts, sampled connections, advisory isolation guidance, reports, and start/stop controls.
+- Adds cautious isolation recommendations to alerts without performing enforcement; any response remains an authorized operator's responsibility.
 - Optionally ingests warning-and-higher Syslog UDP messages and Wazuh `alerts.json` records as read-only events.
 - Stores application logs and reports in a per-user local data directory, outside the repository.
 - Uses bounded scans and a small, quantized 3B model by default to suit memory-constrained laptops.
@@ -129,7 +133,7 @@ For remote forwarding, set `SYSLOG_UDP_HOST` to an explicitly selected interface
 
 ## Cross-platform support
 
-The connection collector and read-only Syslog/Wazuh ingestion are designed for Windows, Linux, and macOS. The desktop UI additionally requires a Python installation with Tkinter/Tcl-Tk available; Linux distributions may package Tk separately. OS permissions and platform APIs affect which process and connection details `psutil` can expose. The project does not currently provide OS-specific endpoint-security or firewall control integrations.
+The connection collector and read-only Syslog/Wazuh ingestion are designed for Windows, Linux, and macOS. The desktop UI additionally requires a Python installation with Tkinter/Tcl-Tk available; Linux distributions may package Tk separately. OS permissions and platform APIs affect which process and connection details `psutil` can expose. The project does not currently provide OS-specific endpoint-security or firewall control integrations. It can suggest review steps, but it does not isolate processes or devices.
 
 GitHub Actions runs the syntax checks and unit tests on Windows, Ubuntu Linux, and macOS. This CI coverage verifies the shared monitoring code and integrations; it is not a claim that every distribution, desktop environment, security product, or data-center platform is supported.
 
@@ -141,6 +145,7 @@ GitHub Actions runs the syntax checks and unit tests on Windows, Ubuntu Linux, a
 .
 ├── network_agent_gui.py       # Native Tkinter desktop dashboard
 ├── network_threat_detection.py # Connection collection and rule-based monitoring
+├── command_center.py          # Allowlisted dashboard commands and advisory guidance
 ├── security_event_ingest.py   # Bounded Syslog UDP and Wazuh JSON inputs
 ├── setup_unix.sh              # Linux/macOS Python environment setup
 ├── run_dashboard.sh           # Linux/macOS desktop launch
@@ -151,6 +156,7 @@ GitHub Actions runs the syntax checks and unit tests on Windows, Ubuntu Linux, a
 ├── docs/images/
 │   └── nexus-dashboard.png    # Redacted dashboard preview
 ├── tests/
+│   ├── test_command_center.py  # Command allowlist, question, and recommendation tests
 │   ├── test_rule_detector.py  # Rule-detector unit tests
 │   └── test_security_event_ingest.py # Integration input tests
 ├── .github/workflows/
@@ -168,7 +174,10 @@ GitHub Actions runs the syntax checks and unit tests on Windows, Ubuntu Linux, a
 - Connection snapshots include remote/local addresses and ports, process names when the operating system permits access, and connection state.
 - Enabled integrations may include security-event descriptions, sender/source IPs, rule IDs, severity, and agent names in local reports. Review and protect these files as security-sensitive data.
 - The tool does not capture packet content, passwords, browser history, or credentials; it does not block connections or change firewall settings.
-- Optional AI explanations are sent only to the configured local Ollama service. Do not change `OLLAMA_URL` to a remote host if you intend to keep data on the device.
+- Optional AI explanations and free-form dashboard questions are sent only to the configured Ollama endpoint. Keep `OLLAMA_URL` local if you intend to keep data on the device.
+- Recent free-form Q&A history is kept in memory for follow-up questions only; it is not written to disk by the command center.
+- The command center recognizes only fixed in-app commands (help, status, alerts, connections, recommendations, start/stop monitoring, and reports). Other text is a question for Ollama; no shell or operating-system command is executed.
+- Isolation guidance is advisory. NEXUS does not terminate processes, block connections, apply firewall rules, or isolate a device.
 - Logs and generated reports are stored under `~/.network_security_agent/data`, not in this repository.
 - `.env`, virtual environments, logs, reports, model files, and databases are excluded by `.gitignore`. Review `git status` before publishing.
 
@@ -178,7 +187,7 @@ GitHub Actions runs the syntax checks and unit tests on Windows, Ubuntu Linux, a
 - Integrations currently cover Syslog UDP and Wazuh JSON file tailing only; this is not a universal SIEM/EDR connector, a clustered data-center service, or a high-availability event pipeline.
 - The Wazuh file input must be readable from the machine running NEXUS. Network shares, permissions, event delivery, and firewall rules must be configured and secured by the operator.
 - Syslog UDP does not authenticate senders or encrypt traffic. Use it only on a trusted network or through a protected relay.
-- The project does not manage encryption keys, configure cryptographic systems, isolate endpoints, or enforce security policies.
+- The project does not manage encryption keys, configure cryptographic systems, isolate endpoints, or enforce security policies; isolation recommendations require independent verification and an authorized response process.
 - Short-lived connections may start and end between scans.
 - Operating-system permissions can restrict visibility into protected processes; the dashboard may show fewer connections without elevated permissions.
 - Threshold alerts can be false positives and should be investigated before drawing conclusions.
@@ -190,7 +199,7 @@ GitHub Actions runs the syntax checks and unit tests on Windows, Ubuntu Linux, a
 The rule detector and dashboard can be smoke-tested with the installed environment:
 
 ```sh
-python -m py_compile network_threat_detection.py network_agent_gui.py security_event_ingest.py
+python -m py_compile network_threat_detection.py network_agent_gui.py security_event_ingest.py command_center.py
 python -m unittest discover -s tests -v
 python network_threat_detection.py --once --no-ai
 ```

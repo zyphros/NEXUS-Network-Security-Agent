@@ -424,6 +424,7 @@
           <article class="feature-card"><span class="feature-icon" aria-hidden="true">05</span><h3 data-ar="إعداد متعدد الأنظمة" data-en="Cross-platform setup">إعداد متعدد الأنظمة</h3><p data-ar="ملفات إعداد وتشغيل لـ Windows وLinux وmacOS، مع خيار سطر أوامر." data-en="Setup and launch scripts for Windows, Linux, and macOS, plus a command-line option.">ملفات إعداد وتشغيل لـ Windows وLinux وmacOS، مع خيار سطر أوامر.</p></article>
           <article class="feature-card"><span class="feature-icon" aria-hidden="true">06</span><h3 data-ar="توثيق واختبارات متعددة الأنظمة" data-en="Cross-platform tests">توثيق واختبارات متعددة الأنظمة</h3><p data-ar="أدلة استخدام باللغتين واختبارات آلية على Windows وLinux وmacOS." data-en="Bilingual guides and automated tests on Windows, Linux, and macOS.">أدلة استخدام باللغتين واختبارات آلية على Windows وLinux وmacOS.</p></article>
           <article class="feature-card"><span class="feature-icon" aria-hidden="true">07</span><h3 data-ar="مدخلات أمنية أولية" data-en="Initial security event inputs">مدخلات أمنية أولية</h3><p data-ar="استقبال اختياري لـ Syslog عبر UDP وقراءة إضافات Wazuh alerts.json؛ للعرض والتحليل الاستشاري فقط." data-en="Optional Syslog UDP and Wazuh alerts.json inputs, for display and advisory analysis only.">استقبال اختياري لـ Syslog عبر UDP وقراءة إضافات Wazuh alerts.json؛ للعرض والتحليل الاستشاري فقط.</p></article>
+          <article class="feature-card"><span class="feature-icon" aria-hidden="true">08</span><h3 data-ar="مركز أسئلة وأوامر آمن" data-en="Safe questions and commands">مركز أسئلة وأوامر آمن</h3><p data-ar="اسأل عن الحالة والتنبيهات عبر Ollama المحلي، واستخدم أوامر محددة داخل التطبيق فقط؛ دون تشغيل أوامر النظام." data-en="Ask about status and alerts through local Ollama and use fixed in-app commands only; no operating-system commands are executed.">اسأل عن الحالة والتنبيهات عبر Ollama المحلي، واستخدم أوامر محددة داخل التطبيق فقط؛ دون تشغيل أوامر النظام.</p></article>
         </div>
       </div>
     </section>
@@ -483,6 +484,7 @@
             <ul>
               <li data-ar="بيانات وصفية لاتصالات الشبكة: العناوين والمنافذ والحالة واسم العملية عند توفره." data-en="Network connection metadata: endpoints, ports, state, and process name when available.">بيانات وصفية لاتصالات الشبكة: العناوين والمنافذ والحالة واسم العملية عند توفره.</li>
               <li data-ar="عند تفعيل مصادر Wazuh/Syslog، تُطبّع حقول التنبيه المحددة وتُحفظ في تقارير محلية." data-en="When Wazuh/Syslog inputs are enabled, selected normalized alert fields are saved in local reports.">عند تفعيل مصادر Wazuh/Syslog، تُطبّع حقول التنبيه المحددة وتُحفظ في تقارير محلية.</li>
+              <li data-ar="الأسئلة الحرة في مركز الأوامر تُرسل إلى نقطة Ollama المضبوطة؛ يكون المعالج محليًا مع الإعداد الافتراضي." data-en="Free-form command-center questions go to the configured Ollama endpoint; the default endpoint is local.">الأسئلة الحرة في مركز الأوامر تُرسل إلى نقطة Ollama المضبوطة؛ يكون المعالج محليًا مع الإعداد الافتراضي.</li>
               <li data-ar="السجلات والتقارير تحفظ محليًا في مجلد بيانات المستخدم، خارج ملفات المشروع." data-en="Logs and reports are stored locally in the user's data directory, outside the project files.">السجلات والتقارير تحفظ محليًا في مجلد بيانات المستخدم، خارج ملفات المشروع.</li>
               <li data-ar="عنوان Ollama الافتراضي محلي؛ لا يحتاج شرح الذكاء الاصطناعي مفتاح API سحابيًا." data-en="The default Ollama endpoint is local; AI explanations need no cloud API key.">عنوان Ollama الافتراضي محلي؛ لا يحتاج شرح الذكاء الاصطناعي مفتاح API سحابيًا.</li>
             </ul>
@@ -493,6 +495,7 @@
               <li data-ar="لا يلتقط محتوى الحزم أو كلمات المرور أو سجل التصفح." data-en="It does not capture packet contents, passwords, or browsing history.">لا يلتقط محتوى الحزم أو كلمات المرور أو سجل التصفح.</li>
               <li data-ar="لا يحظر الاتصالات ولا يعدل إعدادات الجدار الناري." data-en="It does not block connections or modify firewall settings.">لا يحظر الاتصالات ولا يعدل إعدادات الجدار الناري.</li>
               <li data-ar="لا يشخص الاختراق ولا يتخذ إجراءات استجابة تلقائية." data-en="It does not diagnose intrusions or take automatic response actions.">لا يشخص الاختراق ولا يتخذ إجراءات استجابة تلقائية.</li>
+              <li data-ar="توصيات العزل للمراجعة فقط؛ لا ينفذ NEXUS أوامر النظام أو عزل الأجهزة أو العمليات." data-en="Isolation guidance is advisory only; NEXUS does not execute system commands or isolate devices or processes.">توصيات العزل للمراجعة فقط؛ لا ينفذ NEXUS أوامر النظام أو عزل الأجهزة أو العمليات.</li>
             </ul>
           </article>
         </div>
