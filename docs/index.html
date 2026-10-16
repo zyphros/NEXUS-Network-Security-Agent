@@ -1,0 +1,543 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#07111f">
+  <meta name="description" content="NEXUS is a local-first Windows network connection monitoring dashboard with rule-based alerts and optional on-device Ollama AI analysis.">
+  <meta property="og:title" content="NEXUS — Local Network Security Agent">
+  <meta property="og:description" content="A lightweight Windows dashboard for local network connection monitoring.">
+  <meta property="og:image" content="images/nexus-dashboard.png">
+  <title>NEXUS — وكيل أمان الشبكة المحلي</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #07111f;
+      --surface: #0d1b2c;
+      --surface-raised: #112238;
+      --line: #1c3650;
+      --text: #edf5ff;
+      --muted: #9bb0c7;
+      --cyan: #37d6f4;
+      --green: #29d6a1;
+      --amber: #ffbd59;
+      --max-width: 1160px;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background:
+        radial-gradient(ellipse at 82% 0%, rgba(30, 105, 147, .2), transparent 36rem),
+        var(--bg);
+      color: var(--text);
+      font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+      line-height: 1.7;
+    }
+
+    a { color: inherit; }
+    a:focus-visible, button:focus-visible {
+      outline: 3px solid var(--amber);
+      outline-offset: 4px;
+    }
+
+    .shell { width: min(calc(100% - 40px), var(--max-width)); margin-inline: auto; }
+    .topbar {
+      position: sticky;
+      z-index: 5;
+      top: 0;
+      border-bottom: 1px solid rgba(55, 214, 244, .13);
+      background: rgba(7, 17, 31, .88);
+      backdrop-filter: blur(16px);
+    }
+    .topbar-inner {
+      min-height: 72px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+    }
+    .brand { display: inline-flex; align-items: center; gap: 11px; text-decoration: none; }
+    .brand-mark {
+      display: grid;
+      width: 38px;
+      height: 38px;
+      place-items: center;
+      border: 1px solid rgba(55, 214, 244, .38);
+      border-radius: 12px;
+      background: rgba(55, 214, 244, .09);
+      color: var(--cyan);
+      font-size: 14px;
+      font-weight: 800;
+      letter-spacing: .08em;
+    }
+    .brand-name { font-size: 15px; font-weight: 750; letter-spacing: .12em; }
+    .nav-actions { display: flex; align-items: center; gap: 18px; }
+    .nav-links { display: flex; align-items: center; gap: 22px; }
+    .nav-links a { color: var(--muted); font-size: 13px; text-decoration: none; }
+    .nav-links a:hover { color: var(--cyan); }
+    .language-button {
+      min-width: 76px;
+      padding: 8px 12px;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      background: var(--surface);
+      color: var(--text);
+      cursor: pointer;
+      font: inherit;
+      font-size: 13px;
+    }
+
+    .hero { padding-block: 86px 58px; }
+    .hero-grid {
+      display: grid;
+      grid-template-columns: .86fr 1.14fr;
+      align-items: center;
+      gap: 52px;
+    }
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      color: var(--green);
+      font-size: 12px;
+      font-weight: 750;
+      letter-spacing: .13em;
+      text-transform: uppercase;
+    }
+    .eyebrow::before {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 15px var(--green);
+      content: "";
+    }
+    h1 {
+      margin: 17px 0 16px;
+      font-size: clamp(38px, 5vw, 62px);
+      letter-spacing: -.045em;
+      line-height: 1.12;
+    }
+    .hero-description { max-width: 540px; color: var(--muted); font-size: 17px; }
+    .hero-description strong { color: var(--text); font-weight: 650; }
+    .actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 28px; }
+    .button {
+      display: inline-flex;
+      min-height: 46px;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+      padding: 10px 17px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--surface);
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 700;
+      text-decoration: none;
+      transition: transform .18s ease, border-color .18s ease, background .18s ease;
+    }
+    .button:hover { transform: translateY(-2px); border-color: var(--cyan); }
+    .button-primary {
+      border-color: transparent;
+      background: linear-gradient(110deg, #12aeca, #22c997);
+      color: #04141e;
+    }
+    .button-primary:hover { background: linear-gradient(110deg, #35c9e3, #3ae0ae); }
+    .button svg { width: 17px; height: 17px; }
+    .tech-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 25px; }
+    .tag {
+      padding: 5px 10px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: #b5cbe0;
+      font-size: 11px;
+      letter-spacing: .02em;
+    }
+    .preview {
+      position: relative;
+      padding: 10px;
+      border: 1px solid rgba(55, 214, 244, .24);
+      border-radius: 17px;
+      background: linear-gradient(145deg, rgba(55, 214, 244, .12), rgba(17, 34, 56, .8) 45%, rgba(41, 214, 161, .08));
+      box-shadow: 0 26px 90px rgba(0, 0, 0, .35), 0 0 60px rgba(55, 214, 244, .08);
+    }
+    .preview img {
+      display: block;
+      width: 100%;
+      height: auto;
+      border: 1px solid rgba(255, 255, 255, .08);
+      border-radius: 10px;
+    }
+    .preview-caption { padding: 10px 5px 0; color: var(--muted); font-size: 11px; }
+    .status-chip {
+      position: absolute;
+      inset-block-start: -15px;
+      inset-inline-start: 28px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #0b1b2a;
+      color: #c3d8eb;
+      font-size: 11px;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, .28);
+    }
+    .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+      padding-bottom: 76px;
+    }
+    .stat {
+      padding: 19px 20px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: linear-gradient(140deg, var(--surface), rgba(13, 27, 44, .54));
+    }
+    .stat strong { display: block; color: var(--cyan); font-size: 15px; }
+    .stat span { display: block; margin-top: 4px; color: var(--muted); font-size: 12px; }
+
+    section.content-section { padding-block: 73px; border-top: 1px solid rgba(28, 54, 80, .65); }
+    .section-heading { max-width: 690px; margin-bottom: 30px; }
+    .section-heading h2 { margin: 0 0 9px; font-size: clamp(25px, 3vw, 34px); letter-spacing: -.025em; }
+    .section-heading p { margin: 0; color: var(--muted); font-size: 14px; }
+    .feature-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+    .feature-card {
+      min-height: 166px;
+      padding: 21px;
+      border: 1px solid var(--line);
+      border-radius: 13px;
+      background: var(--surface);
+    }
+    .feature-icon {
+      display: grid;
+      width: 36px;
+      height: 36px;
+      place-items: center;
+      border: 1px solid rgba(55, 214, 244, .22);
+      border-radius: 10px;
+      background: rgba(55, 214, 244, .08);
+      color: var(--cyan);
+      font-size: 16px;
+      font-weight: 800;
+    }
+    .feature-card h3 { margin: 14px 0 6px; font-size: 15px; }
+    .feature-card p { margin: 0; color: var(--muted); font-size: 12px; }
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      counter-reset: steps;
+    }
+    .flow-step {
+      position: relative;
+      padding: 20px 18px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: rgba(13, 27, 44, .72);
+      counter-increment: steps;
+    }
+    .flow-step::before {
+      display: block;
+      margin-bottom: 15px;
+      color: var(--green);
+      font-family: Consolas, monospace;
+      font-size: 12px;
+      content: "0" counter(steps);
+    }
+    .flow-step h3 { margin: 0 0 7px; font-size: 14px; }
+    .flow-step p { margin: 0; color: var(--muted); font-size: 12px; }
+    .privacy-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+    .info-panel { padding: 24px; border: 1px solid var(--line); border-radius: 13px; background: var(--surface); }
+    .info-panel h3 { margin: 0 0 13px; font-size: 16px; }
+    .info-panel ul { display: grid; gap: 10px; margin: 0; padding-inline-start: 19px; color: var(--muted); font-size: 13px; }
+    .info-panel li::marker { color: var(--green); }
+    .notice {
+      margin-top: 18px;
+      padding: 15px 18px;
+      border: 1px solid rgba(255, 189, 89, .26);
+      border-radius: 10px;
+      background: rgba(255, 189, 89, .06);
+      color: #e6cfaa;
+      font-size: 12px;
+    }
+    .requirements {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 9px;
+      margin-top: 20px;
+    }
+    .requirements span {
+      padding: 8px 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      color: #c2d4e6;
+      font-size: 12px;
+    }
+    .install {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      align-items: stretch;
+    }
+    .install-card { padding: 22px; border: 1px solid var(--line); border-radius: 13px; background: var(--surface); }
+    .install-card h3 { margin: 0 0 8px; font-size: 15px; }
+    .install-card p { margin: 0; color: var(--muted); font-size: 12px; }
+    pre {
+      overflow-x: auto;
+      margin: 15px 0 0;
+      padding: 15px;
+      border: 1px solid #203b55;
+      border-radius: 9px;
+      background: #071321;
+      color: #9ae9df;
+      direction: ltr;
+      text-align: left;
+      font: 12px/1.8 Consolas, "Courier New", monospace;
+    }
+    .closing {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 25px;
+      padding: 28px;
+      border: 1px solid rgba(55, 214, 244, .23);
+      border-radius: 15px;
+      background: linear-gradient(110deg, rgba(55, 214, 244, .09), rgba(41, 214, 161, .05));
+    }
+    .closing h2 { margin: 0 0 5px; font-size: 22px; }
+    .closing p { margin: 0; color: var(--muted); font-size: 13px; }
+    footer { padding-block: 28px; border-top: 1px solid var(--line); color: var(--muted); font-size: 11px; }
+    .footer-inner { display: flex; justify-content: space-between; gap: 15px; }
+    .footer-links { display: flex; gap: 16px; }
+    .footer-links a { text-decoration: none; }
+    .footer-links a:hover { color: var(--cyan); }
+    .ltr { direction: ltr; unicode-bidi: isolate; }
+
+    @media (max-width: 850px) {
+      .hero-grid { grid-template-columns: 1fr; gap: 48px; }
+      .hero-copy { max-width: 700px; }
+      .preview { max-width: 780px; }
+      .feature-grid { grid-template-columns: repeat(2, 1fr); }
+      .flow { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 600px) {
+      .shell { width: min(calc(100% - 28px), var(--max-width)); }
+      .topbar-inner { min-height: 62px; }
+      .nav-links { display: none; }
+      .hero { padding-block: 58px 42px; }
+      .hero-grid { gap: 40px; }
+      .hero-description { font-size: 15px; }
+      .stats { grid-template-columns: 1fr; gap: 9px; padding-bottom: 52px; }
+      .stat { padding: 14px 16px; }
+      section.content-section { padding-block: 53px; }
+      .feature-grid, .flow, .privacy-layout, .install { grid-template-columns: 1fr; }
+      .feature-card { min-height: auto; }
+      .closing { align-items: flex-start; flex-direction: column; }
+      .footer-inner { align-items: flex-start; flex-direction: column; }
+      .status-chip { inset-inline-start: 16px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      *, *::before, *::after { transition-duration: .01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="shell topbar-inner">
+      <a class="brand" href="#top" aria-label="NEXUS home">
+        <span class="brand-mark" aria-hidden="true">NX</span>
+        <span class="brand-name">NEXUS</span>
+      </a>
+      <div class="nav-actions">
+        <nav class="nav-links" aria-label="Main navigation">
+          <a href="#features" data-ar="المزايا" data-en="Features">المزايا</a>
+          <a href="#privacy" data-ar="الخصوصية" data-en="Privacy">الخصوصية</a>
+          <a href="#start" data-ar="البدء" data-en="Get started">البدء</a>
+        </nav>
+        <button class="language-button" type="button" id="language-toggle" aria-label="Switch language">EN</button>
+      </div>
+    </div>
+  </header>
+
+  <main id="top">
+    <section class="hero shell">
+      <div class="hero-grid">
+        <div class="hero-copy">
+          <span class="eyebrow" data-ar="مراقبة شبكات محلية" data-en="Local-first network monitoring">مراقبة شبكات محلية</span>
+          <h1 data-ar="درع الشبكة المحلي" data-en="Local Network Defense">درع الشبكة المحلي</h1>
+          <p class="hero-description" data-ar="لوحة مكتبية خفيفة لنظام Windows تساعدك على مراجعة اتصالات الشبكة والتنبيهات المبنية على قواعد، مع تحليل اختياري بواسطة ذكاء اصطناعي يعمل محليًا." data-en="A lightweight Windows desktop dashboard for inspecting network connections and rule-based alerts, with optional AI explanations running locally on your device.">لوحة مكتبية خفيفة لنظام Windows تساعدك على مراجعة اتصالات الشبكة والتنبيهات المبنية على قواعد، مع تحليل اختياري بواسطة ذكاء اصطناعي يعمل محليًا.</p>
+          <div class="actions">
+            <a class="button button-primary" href="https://github.com/zyphros/NEXUS-Network-Security-Agent" target="_blank" rel="noopener noreferrer">
+              <span data-ar="استكشف الكود على GitHub" data-en="Explore the source on GitHub">استكشف الكود على GitHub</span>
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 17 17 7M7 7h10v10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </a>
+            <a class="button" href="https://github.com/zyphros/NEXUS-Network-Security-Agent/archive/refs/heads/main.zip">
+              <span data-ar="تنزيل نسخة المشروع" data-en="Download project ZIP">تنزيل نسخة المشروع</span>
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 17v3h14v-3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </a>
+          </div>
+          <div class="tech-list" aria-label="Technology stack">
+            <span class="tag">Python</span>
+            <span class="tag">Tkinter</span>
+            <span class="tag">psutil</span>
+            <span class="tag">Ollama · optional</span>
+            <span class="tag">Windows 10/11</span>
+          </div>
+        </div>
+        <div class="preview">
+          <div class="status-chip"><span class="status-dot" aria-hidden="true"></span><span data-ar="تحكم محلي · لا التقاط للحزم" data-en="Local control · no packet capture">تحكم محلي · لا التقاط للحزم</span></div>
+          <a href="images/nexus-dashboard.png" target="_blank" rel="noopener noreferrer" aria-label="Open dashboard screenshot">
+            <img src="images/nexus-dashboard.png" alt="لقطة لوحة تحكم NEXUS مع عناوين IP تجريبية مجهولة" width="1229" height="698">
+          </a>
+          <div class="preview-caption" data-ar="معاينة من التطبيق · عناوين الاتصالات استُبدلت بعناوين توثيقية تجريبية." data-en="Application preview · connection addresses replaced with documentation-only examples.">معاينة من التطبيق · عناوين الاتصالات استُبدلت بعناوين توثيقية تجريبية.</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="stats shell" aria-label="Project summary">
+      <div class="stat"><strong data-ar="محلي أولًا" data-en="Local-first">محلي أولًا</strong><span data-ar="المراقبة لا تتطلب خدمة ذكاء اصطناعي سحابية" data-en="Monitoring does not depend on a cloud AI service">المراقبة لا تتطلب خدمة ذكاء اصطناعي سحابية</span></div>
+      <div class="stat"><strong data-ar="بيانات وصفية فقط" data-en="Metadata only">بيانات وصفية فقط</strong><span data-ar="يعرض عناوين الاتصالات وحالتها دون محتوى الحزم" data-en="Displays connection endpoints and state, not packet contents">يعرض عناوين الاتصالات وحالتها دون محتوى الحزم</span></div>
+      <div class="stat"><strong data-ar="بدء بإرادة المستخدم" data-en="User-controlled start">بدء بإرادة المستخدم</strong><span data-ar="المراقبة لا تبدأ إلا عند الضغط على زر البدء" data-en="Monitoring begins only when the user presses Start">المراقبة لا تبدأ إلا عند الضغط على زر البدء</span></div>
+    </section>
+
+    <section class="content-section" id="features">
+      <div class="shell">
+        <div class="section-heading">
+          <h2 data-ar="ماذا يقدم NEXUS؟" data-en="What NEXUS does">ماذا يقدم NEXUS؟</h2>
+          <p data-ar="مشروع تعليمي يجمع مراقبة الاتصالات المحلية وواجهة واضحة وتنبيهات قابلة للفهم، مع الحفاظ على نطاق متواضع وشفاف." data-en="An educational project combining local connection monitoring, a clear dashboard, and understandable alerts—with a deliberately focused scope.">مشروع تعليمي يجمع مراقبة الاتصالات المحلية وواجهة واضحة وتنبيهات قابلة للفهم، مع الحفاظ على نطاق متواضع وشفاف.</p>
+        </div>
+        <div class="feature-grid">
+          <article class="feature-card"><span class="feature-icon" aria-hidden="true">01</span><h3 data-ar="لوحة مراقبة مباشرة" data-en="Live dashboard">لوحة مراقبة مباشرة</h3><p data-ar="جدول للاتصالات الحالية، وعدادات للحالات والوجهات، وسجل للأحداث في واجهة سطح مكتب عربية." data-en="A desktop view of current connections, status and destination counters, and a local event feed.">جدول للاتصالات الحالية، وعدادات للحالات والوجهات، وسجل للأحداث في واجهة سطح مكتب عربية.</p></article>
+          <article class="feature-card"><span class="feature-icon" aria-hidden="true">02</span><h3 data-ar="قواعد قابلة للضبط" data-en="Configurable rules">قواعد قابلة للضبط</h3><p data-ar="يرصد تجاوز حدود الاتصالات والوجهات الجديدة واتصالات العمليات، مع فترة تهدئة تحد من تكرار التنبيهات." data-en="Flags connection-count, new-destination, and per-process thresholds, with cooldowns to reduce repeated alerts.">يرصد تجاوز حدود الاتصالات والوجهات الجديدة واتصالات العمليات، مع فترة تهدئة تحد من تكرار التنبيهات.</p></article>
+          <article class="feature-card"><span class="feature-icon" aria-hidden="true">03</span><h3 data-ar="شرح ذكي اختياري" data-en="Optional AI explanations">شرح ذكي اختياري</h3><p data-ar="يمكن لـ Ollama المحلي تلخيص التنبيه بعد ظهوره؛ وتستمر المراقبة القائمة على القواعد حتى عند عدم توفره." data-en="A local Ollama model can summarize an alert after it occurs; rule-based monitoring continues if Ollama is unavailable.">يمكن لـ Ollama المحلي تلخيص التنبيه بعد ظهوره؛ وتستمر المراقبة القائمة على القواعد حتى عند عدم توفره.</p></article>
+          <article class="feature-card"><span class="feature-icon" aria-hidden="true">04</span><h3 data-ar="مصمم ليبقى خفيفًا" data-en="Designed to stay lightweight">مصمم ليبقى خفيفًا</h3><p data-ar="فواصل الفحص قابلة للتغيير، والتحليل الذكي اختياري ومحدد المهلة ولا يُطلب في كل دورة." data-en="Polling intervals are adjustable, and optional AI uses bounded generation and is not called on every scan.">فواصل الفحص قابلة للتغيير، والتحليل الذكي اختياري ومحدد المهلة ولا يُطلب في كل دورة.</p></article>
+          <article class="feature-card"><span class="feature-icon" aria-hidden="true">05</span><h3 data-ar="إعداد وتشغيل بسيطان" data-en="Simple Windows setup">إعداد وتشغيل بسيطان</h3><p data-ar="ملفات تشغيل وإعداد مخصصة لويندوز، مع نسخة طرفية للاستخدام دون الواجهة الرسومية." data-en="Windows setup and launch scripts, plus a command-line option for running without the GUI.">ملفات تشغيل وإعداد مخصصة لويندوز، مع نسخة طرفية للاستخدام دون الواجهة الرسومية.</p></article>
+          <article class="feature-card"><span class="feature-icon" aria-hidden="true">06</span><h3 data-ar="توثيق واختبارات" data-en="Docs and tests">توثيق واختبارات</h3><p data-ar="أدلة استخدام باللغتين واختبارات لوظائف كشف القواعد وتجنب التنبيهات المكررة." data-en="Bilingual project guides and unit tests for rule detection and duplicate-alert cooldown behavior.">أدلة استخدام باللغتين واختبارات لوظائف كشف القواعد وتجنب التنبيهات المكررة.</p></article>
+        </div>
+      </div>
+    </section>
+
+    <section class="content-section">
+      <div class="shell">
+        <div class="section-heading">
+          <h2 data-ar="كيف يعمل؟" data-en="How it works">كيف يعمل؟</h2>
+          <p data-ar="تسلسل واضح يبدأ محليًا وينتهي بمؤشر يحتاج إلى مراجعة بشرية." data-en="A straightforward local workflow that produces indicators for human review.">تسلسل واضح يبدأ محليًا وينتهي بمؤشر يحتاج إلى مراجعة بشرية.</p>
+        </div>
+        <div class="flow">
+          <article class="flow-step"><h3 data-ar="جمع محدود" data-en="Bounded collection">جمع محدود</h3><p data-ar="يقرأ psutil بيانات الاتصالات التي يتيحها Windows." data-en="psutil reads connection metadata exposed by Windows.">يقرأ psutil بيانات الاتصالات التي يتيحها Windows.</p></article>
+          <article class="flow-step"><h3 data-ar="تقييم القواعد" data-en="Rule evaluation">تقييم القواعد</h3><p data-ar="تُقارن الأعداد والوجهات بحدود قابلة للضبط." data-en="Counts and destinations are checked against adjustable thresholds.">تُقارن الأعداد والوجهات بحدود قابلة للضبط.</p></article>
+          <article class="flow-step"><h3 data-ar="عرض التنبيه" data-en="Alert display">عرض التنبيه</h3><p data-ar="تظهر المؤشرات في اللوحة مع فترة تهدئة للتكرار." data-en="Indicators appear in the dashboard with duplicate-alert cooldowns.">تظهر المؤشرات في اللوحة مع فترة تهدئة للتكرار.</p></article>
+          <article class="flow-step"><h3 data-ar="شرح اختياري" data-en="Optional explanation">شرح اختياري</h3><p data-ar="عند التفعيل، يلخص Ollama المحلي التنبيه للمساعدة على مراجعته." data-en="When enabled, local Ollama summarizes the alert to help with review.">عند التفعيل، يلخص Ollama المحلي التنبيه للمساعدة على مراجعته.</p></article>
+        </div>
+      </div>
+    </section>
+
+    <section class="content-section" id="privacy">
+      <div class="shell">
+        <div class="section-heading">
+          <h2 data-ar="الخصوصية والحدود بوضوح" data-en="Privacy and limitations, clearly stated">الخصوصية والحدود بوضوح</h2>
+          <p data-ar="يعرض المشروع ما يفعله وما لا يفعله، دون ادعاء أنه بديل لمنصة أمنية متكاملة." data-en="The project is explicit about its scope and is not presented as a replacement for a full security platform.">يعرض المشروع ما يفعله وما لا يفعله، دون ادعاء أنه بديل لمنصة أمنية متكاملة.</p>
+        </div>
+        <div class="privacy-layout">
+          <article class="info-panel">
+            <h3 data-ar="ما تتم مراقبته" data-en="What is monitored">ما تتم مراقبته</h3>
+            <ul>
+              <li data-ar="بيانات وصفية لاتصالات الشبكة: العناوين والمنافذ والحالة واسم العملية عند توفره." data-en="Network connection metadata: endpoints, ports, state, and process name when available.">بيانات وصفية لاتصالات الشبكة: العناوين والمنافذ والحالة واسم العملية عند توفره.</li>
+              <li data-ar="السجلات والتقارير تحفظ محليًا في مجلد بيانات المستخدم، خارج ملفات المشروع." data-en="Logs and reports are stored locally in the user's data directory, outside the project files.">السجلات والتقارير تحفظ محليًا في مجلد بيانات المستخدم، خارج ملفات المشروع.</li>
+              <li data-ar="عنوان Ollama الافتراضي محلي؛ لا يحتاج شرح الذكاء الاصطناعي مفتاح API سحابيًا." data-en="The default Ollama endpoint is local; AI explanations need no cloud API key.">عنوان Ollama الافتراضي محلي؛ لا يحتاج شرح الذكاء الاصطناعي مفتاح API سحابيًا.</li>
+            </ul>
+          </article>
+          <article class="info-panel">
+            <h3 data-ar="ما لا يفعله البرنامج" data-en="What the application does not do">ما لا يفعله البرنامج</h3>
+            <ul>
+              <li data-ar="لا يلتقط محتوى الحزم أو كلمات المرور أو سجل التصفح." data-en="It does not capture packet contents, passwords, or browsing history.">لا يلتقط محتوى الحزم أو كلمات المرور أو سجل التصفح.</li>
+              <li data-ar="لا يحظر الاتصالات ولا يعدل إعدادات الجدار الناري." data-en="It does not block connections or modify firewall settings.">لا يحظر الاتصالات ولا يعدل إعدادات الجدار الناري.</li>
+              <li data-ar="لا يشخص الاختراق ولا يتخذ إجراءات استجابة تلقائية." data-en="It does not diagnose intrusions or take automatic response actions.">لا يشخص الاختراق ولا يتخذ إجراءات استجابة تلقائية.</li>
+            </ul>
+          </article>
+        </div>
+        <div class="notice" data-ar="مهم: التنبيهات استدلالية وقد تتضمن إيجابيات كاذبة. الاتصالات القصيرة أو العمليات المحمية قد لا تظهر؛ راجع كل نتيجة قبل اتخاذ قرار." data-en="Important: Alerts are heuristic and may be false positives. Short-lived connections or protected processes may not appear; review findings before taking action.">مهم: التنبيهات استدلالية وقد تتضمن إيجابيات كاذبة. الاتصالات القصيرة أو العمليات المحمية قد لا تظهر؛ راجع كل نتيجة قبل اتخاذ قرار.</div>
+      </div>
+    </section>
+
+    <section class="content-section" id="start">
+      <div class="shell">
+        <div class="section-heading">
+          <h2 data-ar="ابدأ بتجربته" data-en="Try the project">ابدأ بتجربته</h2>
+          <p data-ar="التطبيق مخصص لـ Windows. يمكن تشغيل المراقبة دون Ollama، وإضافة التحليل المحلي اختيارية." data-en="The app targets Windows. Monitoring works without Ollama; local AI analysis is optional.">التطبيق مخصص لـ Windows. يمكن تشغيل المراقبة دون Ollama، وإضافة التحليل المحلي اختيارية.</p>
+          <div class="requirements">
+            <span>Windows 10 / 11</span><span>Python 3.10+</span><span>Tcl/Tk</span><span>Ollama · optional</span>
+          </div>
+        </div>
+        <div class="install">
+          <article class="install-card">
+            <h3 data-ar="تشغيل لوحة التحكم" data-en="Launch the dashboard">تشغيل لوحة التحكم</h3>
+            <p data-ar="نزّل المشروع، ثم شغّل ملفات الإعداد والواجهة." data-en="Download the project, then run its setup and dashboard scripts.">نزّل المشروع، ثم شغّل ملفات الإعداد والواجهة.</p>
+            <pre>setup_windows.bat
+run_dashboard.bat</pre>
+          </article>
+          <article class="install-card">
+            <h3 data-ar="تفعيل التحليل المحلي (اختياري)" data-en="Enable local AI (optional)">تفعيل التحليل المحلي (اختياري)</h3>
+            <p data-ar="ثبّت Ollama ثم نزّل النموذج الافتراضي؛ حجمه يقارب 1.9 GB." data-en="Install Ollama and pull the default model; the download is approximately 1.9 GB.">ثبّت Ollama ثم نزّل النموذج الافتراضي؛ حجمه يقارب 1.9 GB.</p>
+            <pre>ollama pull qwen2.5:3b</pre>
+          </article>
+        </div>
+        <div class="closing" style="margin-top: 28px">
+          <div>
+            <h2 data-ar="استكشف المشروع كاملًا" data-en="Explore the complete project">استكشف المشروع كاملًا</h2>
+            <p data-ar="الكود المصدري، أدلة التشغيل، الاختبارات، والتنزيل من المستودع العام." data-en="Source code, setup guides, tests, and a ZIP download are available in the public repository.">الكود المصدري، أدلة التشغيل، الاختبارات، والتنزيل من المستودع العام.</p>
+          </div>
+          <div class="actions" style="margin: 0">
+            <a class="button button-primary" href="https://github.com/zyphros/NEXUS-Network-Security-Agent" target="_blank" rel="noopener noreferrer" data-ar="عرض المستودع" data-en="View repository">عرض المستودع</a>
+            <a class="button" href="https://github.com/zyphros/NEXUS-Network-Security-Agent/blob/main/README.ar.md" target="_blank" rel="noopener noreferrer" data-ar="دليل الاستخدام العربي" data-en="Arabic user guide">دليل الاستخدام العربي</a>
+            <a class="button" href="https://github.com/zyphros/NEXUS-Network-Security-Agent/blob/main/README.md" target="_blank" rel="noopener noreferrer" data-ar="English guide" data-en="English guide">English guide</a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="shell footer-inner">
+      <span>Copyright © 2026 zyphros. All rights reserved.</span>
+      <div class="footer-links">
+        <a href="https://github.com/zyphros/NEXUS-Network-Security-Agent" target="_blank" rel="noopener noreferrer">GitHub</a>
+        <a href="https://github.com/zyphros/NEXUS-Network-Security-Agent/blob/main/README.ar.md" target="_blank" rel="noopener noreferrer" data-ar="التوثيق" data-en="Documentation">التوثيق</a>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    const languageToggle = document.getElementById("language-toggle");
+    const translatedElements = document.querySelectorAll("[data-ar][data-en]");
+
+    languageToggle.addEventListener("click", () => {
+      const nextLanguage = document.documentElement.lang === "ar" ? "en" : "ar";
+      document.documentElement.lang = nextLanguage;
+      document.documentElement.dir = nextLanguage === "ar" ? "rtl" : "ltr";
+      document.title = nextLanguage === "ar"
+        ? "NEXUS — وكيل أمان الشبكة المحلي"
+        : "NEXUS — Local Network Security Agent";
+      languageToggle.textContent = nextLanguage === "ar" ? "EN" : "عربي";
+      languageToggle.setAttribute(
+        "aria-label",
+        nextLanguage === "ar" ? "Switch language to English" : "تغيير اللغة إلى العربية"
+      );
+
+      for (const element of translatedElements) {
+        element.textContent = element.dataset[nextLanguage];
+      }
+    });
+  </script>
+</body>
+</html>
