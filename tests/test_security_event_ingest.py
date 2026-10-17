@@ -13,8 +13,11 @@ from security_event_ingest import (
     MAX_MESSAGE_BYTES,
     SecurityEventIngestor,
     is_actionable_syslog_event,
+    parse_snort_alert,
+    parse_suricata_alert,
     parse_syslog_message,
     parse_wazuh_alert,
+    parse_zeek_notice,
 )
 
 
@@ -76,6 +79,73 @@ class SecurityEventIngestTests(unittest.TestCase):
             parse_wazuh_alert(json.dumps(record).encode("utf-8"), minimum_level=7)
         )
 
+    def test_suricata_only_alert_events_are_normalized(self):
+        record = {
+            "timestamp": "2026-10-16T10:00:00.000000+0000",
+            "event_type": "alert",
+            "src_ip": "198.51.100.20",
+            "alert": {
+                "signature_id": 2200078,
+                "signature": "ET TEST Suspicious activity",
+                "severity": 1,
+            },
+            "payload": "must not be copied",
+        }
+
+        event = parse_suricata_alert(json.dumps(record).encode("utf-8"))
+
+        self.assertIsNotNone(event)
+        self.assertEqual(event["source"], "suricata")
+        self.assertEqual(event["rule_id"], "2200078")
+        self.assertEqual(event["severity"], "high")
+        self.assertEqual(event["sender_ip"], "198.51.100.20")
+        self.assertNotIn("payload", event)
+        self.assertIsNone(parse_suricata_alert(b'{"event_type":"flow"}'))
+
+    def test_snort_alert_json_is_normalized_without_flow_data(self):
+        record = {
+            "timestamp": "2026-10-16T10:00:00.000000+0000",
+            "event_type": "alert",
+            "src_ip": "203.0.113.25",
+            "alert": {
+                "signature_id": 100001,
+                "msg": "Suspicious test signature",
+                "severity": 2,
+            },
+            "pkt": "must not be copied",
+        }
+
+        event = parse_snort_alert(json.dumps(record).encode("utf-8"))
+
+        self.assertIsNotNone(event)
+        self.assertEqual(event["source"], "snort")
+        self.assertEqual(event["rule_id"], "100001")
+        self.assertEqual(event["severity"], "medium")
+        self.assertEqual(event["sender_ip"], "203.0.113.25")
+        self.assertNotIn("pkt", event)
+        self.assertIsNone(parse_snort_alert(b'{"event_type":"flow"}'))
+
+    def test_zeek_notice_json_uses_notice_metadata_only(self):
+        record = {
+            "ts": 1792144800.0,
+            "note": "SSH::Password_Guessing",
+            "msg": "Multiple authentication failures",
+            "src": "192.0.2.55",
+            "dst": "192.0.2.80",
+        }
+
+        event = parse_zeek_notice(json.dumps(record).encode("utf-8"))
+
+        self.assertIsNotNone(event)
+        self.assertEqual(event["source"], "zeek")
+        self.assertEqual(event["rule_id"], "SSH::Password_Guessing")
+        self.assertEqual(event["severity"], "notice")
+        self.assertEqual(event["sender_ip"], "192.0.2.55")
+        self.assertEqual(event["observed_at"], "2026-10-16T10:00:00+00:00")
+        self.assertNotIn("dst", event)
+        self.assertIsNone(parse_zeek_notice(b'{"msg":"not a notice"}'))
+        self.assertIsNone(parse_zeek_notice(b"{not-json"))
+
     def test_malformed_and_non_object_wazuh_records_are_ignored(self):
         self.assertIsNone(parse_wazuh_alert(b"{not-json"))
         self.assertIsNone(parse_wazuh_alert(b'["not", "an", "alert"]'))
@@ -109,6 +179,91 @@ class SecurityEventIngestTests(unittest.TestCase):
                 self.assertIsNotNone(event)
                 self.assertEqual(event["rule_id"], "2")
                 self.assertEqual(event["description"], "After startup")
+            finally:
+                ingestor.stop()
+
+    def test_optional_json_sources_tail_only_new_records(self):
+        initial_suricata = {
+            "event_type": "alert",
+            "timestamp": "2026-10-16T10:00:00.000000+0000",
+            "src_ip": "192.0.2.1",
+            "alert": {"signature_id": 1, "signature": "old", "severity": 1},
+        }
+        appended_suricata = {
+            "event_type": "alert",
+            "timestamp": "2026-10-16T10:01:00.000000+0000",
+            "src_ip": "192.0.2.2",
+            "alert": {"signature_id": 2, "signature": "new", "severity": 2},
+        }
+        initial_zeek = {"ts": 1792144800.0, "note": "old-zeek", "msg": "old"}
+        appended_zeek = {
+            "ts": 1792144860.0,
+            "note": "new-zeek",
+            "msg": "new notice",
+            "src": "198.51.100.10",
+        }
+        initial_snort = {
+            "event_type": "alert",
+            "alert": {"signature_id": 3, "msg": "old-snort", "severity": 3},
+        }
+        appended_snort = {
+            "event_type": "alert",
+            "src_ip": "203.0.113.10",
+            "alert": {"signature_id": 4, "msg": "new Snort alert", "severity": 1},
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            eve_path = Path(directory) / "eve.json"
+            zeek_path = Path(directory) / "notice.log"
+            snort_path = Path(directory) / "alert_json.txt"
+            for path, record in (
+                (eve_path, initial_suricata),
+                (zeek_path, initial_zeek),
+                (snort_path, initial_snort),
+            ):
+                path.write_text(json.dumps(record) + "\n", encoding="utf-8")
+            ingestor = SecurityEventIngestor(
+                suricata_eve_file=eve_path,
+                zeek_notice_file=zeek_path,
+                snort_alerts_file=snort_path,
+            )
+            try:
+                self.assertTrue(ingestor.enabled)
+                self.assertEqual(
+                    ingestor.start(),
+                    (
+                        f"Suricata EVE alerts {eve_path}",
+                        f"Zeek notices {zeek_path}",
+                        f"Snort JSON alerts {snort_path}",
+                    ),
+                )
+                time.sleep(0.6)
+                for path, record in (
+                    (eve_path, appended_suricata),
+                    (zeek_path, appended_zeek),
+                    (snort_path, appended_snort),
+                ):
+                    with path.open("a", encoding="utf-8") as event_file:
+                        event_file.write(json.dumps(record) + "\n")
+
+                deadline = time.monotonic() + 3
+                events = []
+                while time.monotonic() < deadline and len(events) < 3:
+                    try:
+                        events.append(ingestor.get_nowait())
+                    except queue.Empty:
+                        time.sleep(0.05)
+
+                self.assertEqual(
+                    {event["source"] for event in events},
+                    {"suricata", "zeek", "snort"},
+                )
+                normalized = {event["source"]: event for event in events}
+                self.assertEqual(normalized["suricata"]["rule_id"], "2")
+                self.assertEqual(normalized["suricata"]["description"], "new")
+                self.assertEqual(normalized["zeek"]["rule_id"], "new-zeek")
+                self.assertEqual(normalized["zeek"]["description"], "new notice")
+                self.assertEqual(normalized["snort"]["rule_id"], "4")
+                self.assertEqual(normalized["snort"]["description"], "new Snort alert")
             finally:
                 ingestor.stop()
 

@@ -423,7 +423,7 @@
           <article class="feature-card"><span class="feature-icon" aria-hidden="true">04</span><h3 data-ar="مصمم ليبقى خفيفًا" data-en="Designed to stay lightweight">مصمم ليبقى خفيفًا</h3><p data-ar="فواصل الفحص قابلة للتغيير، والتحليل الذكي اختياري ومحدد المهلة ولا يُطلب في كل دورة." data-en="Polling intervals are adjustable, and optional AI uses bounded generation and is not called on every scan.">فواصل الفحص قابلة للتغيير، والتحليل الذكي اختياري ومحدد المهلة ولا يُطلب في كل دورة.</p></article>
           <article class="feature-card"><span class="feature-icon" aria-hidden="true">05</span><h3 data-ar="إعداد متعدد الأنظمة" data-en="Cross-platform setup">إعداد متعدد الأنظمة</h3><p data-ar="ملفات إعداد وتشغيل لـ Windows وLinux وmacOS، مع خيار سطر أوامر." data-en="Setup and launch scripts for Windows, Linux, and macOS, plus a command-line option.">ملفات إعداد وتشغيل لـ Windows وLinux وmacOS، مع خيار سطر أوامر.</p></article>
           <article class="feature-card"><span class="feature-icon" aria-hidden="true">06</span><h3 data-ar="توثيق واختبارات متعددة الأنظمة" data-en="Cross-platform tests">توثيق واختبارات متعددة الأنظمة</h3><p data-ar="أدلة استخدام باللغتين واختبارات آلية على Windows وLinux وmacOS." data-en="Bilingual guides and automated tests on Windows, Linux, and macOS.">أدلة استخدام باللغتين واختبارات آلية على Windows وLinux وmacOS.</p></article>
-          <article class="feature-card"><span class="feature-icon" aria-hidden="true">07</span><h3 data-ar="مدخلات أمنية أولية" data-en="Initial security event inputs">مدخلات أمنية أولية</h3><p data-ar="استقبال اختياري لـ Syslog عبر UDP وقراءة إضافات Wazuh alerts.json؛ للعرض والتحليل الاستشاري فقط." data-en="Optional Syslog UDP and Wazuh alerts.json inputs, for display and advisory analysis only.">استقبال اختياري لـ Syslog عبر UDP وقراءة إضافات Wazuh alerts.json؛ للعرض والتحليل الاستشاري فقط.</p></article>
+          <article class="feature-card"><span class="feature-icon" aria-hidden="true">07</span><h3 data-ar="موصلات تنبيهات اختيارية" data-en="Optional alert connectors">موصلات تنبيهات اختيارية</h3><p data-ar="قراءة سجلات تنبيهات Syslog وWazuh وSuricata وZeek وSnort الموجودة مسبقًا؛ للعرض والتحليل الاستشاري فقط." data-en="Read-only inputs for existing Syslog, Wazuh, Suricata, Zeek, and Snort alert logs, for display and advisory analysis only.">قراءة سجلات تنبيهات Syslog وWazuh وSuricata وZeek وSnort الموجودة مسبقًا؛ للعرض والتحليل الاستشاري فقط.</p></article>
           <article class="feature-card"><span class="feature-icon" aria-hidden="true">08</span><h3 data-ar="مركز أسئلة وأوامر آمن" data-en="Safe questions and commands">مركز أسئلة وأوامر آمن</h3><p data-ar="الأسئلة الشائعة والأوامر الآمنة تعمل دون Ollama؛ الأسئلة الحرة تحتاج تشغيل Ollama محليًا." data-en="Common questions and safe commands work offline; free-form AI questions require local Ollama to be running.">الأسئلة الشائعة والأوامر الآمنة تعمل دون Ollama؛ الأسئلة الحرة تحتاج تشغيل Ollama محليًا.</p></article>
         </div>
       </div>
@@ -452,11 +452,12 @@
         </div>
         <div class="privacy-layout">
           <article class="info-panel">
-            <h3 data-ar="Syslog UDP وWazuh" data-en="Syslog UDP and Wazuh">Syslog UDP وWazuh</h3>
+            <h3 data-ar="Syslog وWazuh وSuricata وZeek وSnort" data-en="Syslog, Wazuh, Suricata, Zeek, and Snort">Syslog وWazuh وSuricata وZeek وSnort</h3>
             <ul>
               <li data-ar="يستقبل Syslog UDP اختياريًا على واجهة محلية افتراضيًا، مع عتبة للشدة وقائمة انتظار محدودة." data-en="Optional Syslog UDP listens on loopback by default, with a severity threshold and bounded queue.">يستقبل Syslog UDP اختياريًا على واجهة محلية افتراضيًا، مع عتبة للشدة وقائمة انتظار محدودة.</li>
-              <li data-ar="يتابع سجلات Wazuh JSON الجديدة في ملف alerts.json يستطيع الجهاز قراءته." data-en="Tails new Wazuh JSON records from a readable alerts.json file.">يتابع سجلات Wazuh JSON الجديدة في ملف alerts.json يستطيع الجهاز قراءته.</li>
-              <li data-ar="يستمر تنسيق الأحداث موحدًا للتوسع لاحقًا عبر موصلات منفصلة." data-en="Events are normalized as a foundation for adding separate connectors later.">يستمر تنسيق الأحداث موحدًا للتوسع لاحقًا عبر موصلات منفصلة.</li>
+              <li data-ar="يتابع سجلات JSON الجديدة: Wazuh alerts.json وSuricata EVE (التنبيهات فقط) وZeek notice JSON وSnort alert_json." data-en="Tails new JSON records: Wazuh alerts.json, Suricata EVE (alerts only), Zeek notice JSON, and Snort alert_json.">يتابع سجلات JSON الجديدة: Wazuh alerts.json وSuricata EVE (التنبيهات فقط) وZeek notice JSON وSnort alert_json.</li>
+              <li data-ar="يقرأ فقط ملفات أنشأتها الأدوات مسبقًا؛ لا يثبتها أو يشغلها، ولا يلتقط الحزم." data-en="Only reads files already produced by those tools; it does not install or run them, or capture packets.">يقرأ فقط ملفات أنشأتها الأدوات مسبقًا؛ لا يثبتها أو يشغلها، ولا يلتقط الحزم.</li>
+              <li data-ar="تُوحّد حقول التنبيه المحددة، ولا يعاد تمرير السجلات القديمة عند البدء." data-en="Selected alert fields are normalized; old records are not replayed at startup.">تُوحّد حقول التنبيه المحددة، ولا يعاد تمرير السجلات القديمة عند البدء.</li>
             </ul>
           </article>
           <article class="info-panel">
@@ -464,11 +465,11 @@
             <ul>
               <li data-ar="Syslog UDP غير مشفر ولا يتحقق من هوية المرسل؛ لا تعرضه على الإنترنت." data-en="Syslog UDP is unencrypted and unauthenticated; do not expose it to the public internet.">Syslog UDP غير مشفر ولا يتحقق من هوية المرسل؛ لا تعرضه على الإنترنت.</li>
               <li data-ar="النموذج الافتراضي عام وليس نموذجًا سيبرانيًا متخصصًا تم التحقق منه." data-en="The default model is general-purpose, not a validated cybersecurity specialist model.">النموذج الافتراضي عام وليس نموذجًا سيبرانيًا متخصصًا تم التحقق منه.</li>
-              <li data-ar="لا توجد بعد موصلات عامة لكل SIEM/EDR أو إجراءات استجابة آلية أو دعم عناقيد عالية التوافر." data-en="There are no universal SIEM/EDR adapters, automated response actions, or high-availability cluster support yet.">لا توجد بعد موصلات عامة لكل SIEM/EDR أو إجراءات استجابة آلية أو دعم عناقيد عالية التوافر.</li>
+              <li data-ar="هذه صيغ سجلات تنبيه عامة وليست برامج سرية حكومية؛ لا يوفر NEXUS موصلًا شاملًا لكل SIEM/EDR أو استجابة آلية." data-en="These are public alert-log formats, not secret government software; NEXUS does not provide universal SIEM/EDR adapters or automated response.">هذه صيغ سجلات تنبيه عامة وليست برامج سرية حكومية؛ لا يوفر NEXUS موصلًا شاملًا لكل SIEM/EDR أو استجابة آلية.</li>
             </ul>
           </article>
         </div>
-        <div class="notice"><span data-ar="إعدادات الربط وخيارات Wazuh موثقة في" data-en="Connector setup and Wazuh options are documented in the">إعدادات الربط وخيارات Wazuh موثقة في</span> <a href="https://github.com/zyphros/NEXUS-Network-Security-Agent/blob/main/README.ar.md" target="_blank" rel="noopener noreferrer" data-ar="دليل المشروع." data-en="project guide.">دليل المشروع.</a></div>
+        <div class="notice"><span data-ar="إعدادات الربط ومسارات السجلات موثقة في" data-en="Connector setup and log paths are documented in the">إعدادات الربط ومسارات السجلات موثقة في</span> <a href="https://github.com/zyphros/NEXUS-Network-Security-Agent/blob/main/README.ar.md" target="_blank" rel="noopener noreferrer" data-ar="دليل المشروع." data-en="project guide.">دليل المشروع.</a></div>
       </div>
     </section>
 
@@ -483,7 +484,7 @@
             <h3 data-ar="ما تتم مراقبته" data-en="What is monitored">ما تتم مراقبته</h3>
             <ul>
               <li data-ar="بيانات وصفية لاتصالات الشبكة: العناوين والمنافذ والحالة واسم العملية عند توفره." data-en="Network connection metadata: endpoints, ports, state, and process name when available.">بيانات وصفية لاتصالات الشبكة: العناوين والمنافذ والحالة واسم العملية عند توفره.</li>
-              <li data-ar="عند تفعيل مصادر Wazuh/Syslog، تُطبّع حقول التنبيه المحددة وتُحفظ في تقارير محلية." data-en="When Wazuh/Syslog inputs are enabled, selected normalized alert fields are saved in local reports.">عند تفعيل مصادر Wazuh/Syslog، تُطبّع حقول التنبيه المحددة وتُحفظ في تقارير محلية.</li>
+              <li data-ar="عند تفعيل مصادر السجلات، تُطبّع حقول التنبيه المحددة وتُحفظ في تقارير محلية." data-en="When log inputs are enabled, selected normalized alert fields are saved in local reports.">عند تفعيل مصادر السجلات، تُطبّع حقول التنبيه المحددة وتُحفظ في تقارير محلية.</li>
               <li data-ar="الأسئلة الحرة في مركز الأوامر تُرسل إلى نقطة Ollama المضبوطة؛ يكون المعالج محليًا مع الإعداد الافتراضي." data-en="Free-form command-center questions go to the configured Ollama endpoint; the default endpoint is local.">الأسئلة الحرة في مركز الأوامر تُرسل إلى نقطة Ollama المضبوطة؛ يكون المعالج محليًا مع الإعداد الافتراضي.</li>
               <li data-ar="السجلات والتقارير تحفظ محليًا في مجلد بيانات المستخدم، خارج ملفات المشروع." data-en="Logs and reports are stored locally in the user's data directory, outside the project files.">السجلات والتقارير تحفظ محليًا في مجلد بيانات المستخدم، خارج ملفات المشروع.</li>
               <li data-ar="عنوان Ollama الافتراضي محلي؛ لا يحتاج شرح الذكاء الاصطناعي مفتاح API سحابيًا." data-en="The default Ollama endpoint is local; AI explanations need no cloud API key.">عنوان Ollama الافتراضي محلي؛ لا يحتاج شرح الذكاء الاصطناعي مفتاح API سحابيًا.</li>

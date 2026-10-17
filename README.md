@@ -100,6 +100,9 @@ Copy `.env.example` to `.env` and edit only the settings you need. `.env` is exc
 | `SYSLOG_UDP_MAX_SEVERITY` | `4` | Highest numeric Syslog severity reported (0 is most severe) |
 | `WAZUH_ALERTS_FILE` | empty | Optional path to a Wazuh `alerts.json` file |
 | `WAZUH_MINIMUM_LEVEL` | `7` | Minimum Wazuh rule level reported |
+| `SURICATA_EVE_FILE` | empty | Optional Suricata EVE JSON-lines file; only `alert` events are read |
+| `ZEEK_NOTICE_FILE` | empty | Optional Zeek `notice.log` configured for JSON output |
+| `SNORT_ALERTS_FILE` | empty | Optional Snort `alert_json` JSON-lines file |
 | `MAX_CONNECTIONS_ALERT` | `150` | Established-connection alert threshold |
 | `MAX_NEW_DESTINATIONS_ALERT` | `25` | New remote IP/port pairs per scan |
 | `MAX_PROCESS_CONNECTIONS_ALERT` | `80` | Remote connections per process |
@@ -108,17 +111,27 @@ Increase `POLL_SECONDS` to reduce scan frequency. Rule thresholds are configurab
 
 ## Security event integrations (optional)
 
-The first integration layer supports two read-only inputs:
+Optional read-only inputs:
 
 - **Syslog UDP:** disabled by default, binds to `127.0.0.1:5514` when enabled, and raises dashboard alerts for messages at warning severity or higher (Syslog PRI severity `0`–`4`).
 - **Wazuh JSON alerts:** tails new records appended to a local or mounted `alerts.json` file and reports alerts at level `7` or higher by default. Existing records are not replayed on startup.
+- **Suricata EVE:** tails new JSON-lines records and accepts `event_type: "alert"` only; flow, DNS, HTTP, packet, and other records are ignored.
+- **Zeek notices:** tails new JSON-lines notice records. Configure Zeek's JSON log writer; default TSV logs are not parsed.
+- **Snort:** tails new Snort `alert_json` JSON-lines alert records; other event types are ignored.
 
-Add only the input you need to the local `.env` file. Example for a Wazuh manager file readable from this machine (use the actual mounted/share path on Windows):
+These connectors only read files produced by separately installed and configured tools. NEXUS does not install, start, configure, or replace Suricata, Zeek, Snort, or Wazuh, and does not capture packets itself. Configure a path only when its file already exists and is readable. Existing file contents are not replayed at startup. Each line is capped at 64 KiB, the in-memory queue at 500 records, and at most 25 actionable events are handled per monitor cycle.
+
+Add only the inputs you need to the local `.env` file. Example paths must refer to files already produced and readable on this machine:
 
 ```dotenv
 WAZUH_ALERTS_FILE=C:\wazuh-share\alerts.json
 WAZUH_MINIMUM_LEVEL=7
+SURICATA_EVE_FILE=C:\suricata\log\eve.json
+ZEEK_NOTICE_FILE=C:\zeek\logs\current\notice.log
+SNORT_ALERTS_FILE=C:\snort\log\alert_json.txt
 ```
+
+Suricata must have EVE alert output enabled, Zeek's `notice.log` must be configured for JSON output, and Snort's `alert_json` logger must be configured. File paths, permissions, rotation, and collection policies remain the operator's responsibility.
 
 Example for a local Syslog sender:
 
@@ -133,7 +146,7 @@ For remote forwarding, set `SYSLOG_UDP_HOST` to an explicitly selected interface
 
 ## Cross-platform support
 
-The connection collector and read-only Syslog/Wazuh ingestion are designed for Windows, Linux, and macOS. The desktop UI additionally requires a Python installation with Tkinter/Tcl-Tk available; Linux distributions may package Tk separately. OS permissions and platform APIs affect which process and connection details `psutil` can expose. The project does not currently provide OS-specific endpoint-security or firewall control integrations. It can suggest review steps, but it does not isolate processes or devices.
+The connection collector and read-only event-file ingestion are designed for Windows, Linux, and macOS. The desktop UI additionally requires a Python installation with Tkinter/Tcl-Tk available; Linux distributions may package Tk separately. OS permissions and platform APIs affect which process and connection details `psutil` can expose. The project does not currently provide OS-specific endpoint-security or firewall control integrations. It can suggest review steps, but it does not isolate processes or devices.
 
 GitHub Actions runs the syntax checks and unit tests on Windows, Ubuntu Linux, and macOS. This CI coverage verifies the shared monitoring code and integrations; it is not a claim that every distribution, desktop environment, security product, or data-center platform is supported.
 
@@ -146,7 +159,7 @@ GitHub Actions runs the syntax checks and unit tests on Windows, Ubuntu Linux, a
 ├── network_agent_gui.py       # Native Tkinter desktop dashboard
 ├── network_threat_detection.py # Connection collection and rule-based monitoring
 ├── command_center.py          # Allowlisted dashboard commands and advisory guidance
-├── security_event_ingest.py   # Bounded Syslog UDP and Wazuh JSON inputs
+├── security_event_ingest.py   # Bounded Syslog UDP and read-only JSON alert inputs
 ├── setup_unix.sh              # Linux/macOS Python environment setup
 ├── run_dashboard.sh           # Linux/macOS desktop launch
 ├── run_agent.sh               # Linux/macOS terminal launch
@@ -184,7 +197,7 @@ GitHub Actions runs the syntax checks and unit tests on Windows, Ubuntu Linux, a
 ## Limitations
 
 - This is connection-metadata monitoring, not packet capture or a full endpoint/network security product.
-- Integrations currently cover Syslog UDP and Wazuh JSON file tailing only; this is not a universal SIEM/EDR connector, a clustered data-center service, or a high-availability event pipeline.
+- Integrations cover Syslog UDP and selected Wazuh, Suricata, Zeek, and Snort alert-file formats only; this is not a universal SIEM/EDR connector, a clustered data-center service, or a high-availability event pipeline.
 - The Wazuh file input must be readable from the machine running NEXUS. Network shares, permissions, event delivery, and firewall rules must be configured and secured by the operator.
 - Syslog UDP does not authenticate senders or encrypt traffic. Use it only on a trusted network or through a protected relay.
 - The project does not manage encryption keys, configure cryptographic systems, isolate endpoints, or enforce security policies; isolation recommendations require independent verification and an authorized response process.
