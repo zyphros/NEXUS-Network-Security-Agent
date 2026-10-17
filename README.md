@@ -176,7 +176,7 @@ GitHub Actions runs the syntax checks and unit tests on Windows, Ubuntu Linux, a
 - The tool does not capture packet content, passwords, browser history, or credentials; it does not block connections or change firewall settings.
 - Optional AI explanations and free-form dashboard questions are sent only to the configured Ollama endpoint. Keep `OLLAMA_URL` local if you intend to keep data on the device.
 - Recent free-form Q&A history is kept in memory for follow-up questions only; it is not written to disk by the command center.
-- The command center recognizes only fixed in-app commands (help, status, alerts, connections, recommendations, start/stop monitoring, and reports). Other text is a question for Ollama; no shell or operating-system command is executed.
+- The command center recognizes fixed in-app commands and common status/alert questions offline (help, status, alerts, connections, recommendations, start/stop monitoring, and reports). Other text is a question for Ollama; no shell or operating-system command is executed.
 - Isolation guidance is advisory. NEXUS does not terminate processes, block connections, apply firewall rules, or isolate a device.
 - Logs and generated reports are stored under `~/.network_security_agent/data`, not in this repository.
 - `.env`, virtual environments, logs, reports, model files, and databases are excluded by `.gitignore`. Review `git status` before publishing.

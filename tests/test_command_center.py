@@ -12,6 +12,8 @@ class CommandCenterTests(unittest.TestCase):
         self.assertEqual(parse_command("  الحالة  "), "status")
         self.assertEqual(parse_command("START MONITORING"), "start")
         self.assertEqual(parse_command("توصيات العزل"), "recommendations")
+        self.assertEqual(parse_command("هل المراقبة تعمل؟"), "status")
+        self.assertEqual(parse_command("هل في تنبيهات؟"), "alerts")
 
         for text in (
             "powershell Remove-Item important.txt",

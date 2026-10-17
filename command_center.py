@@ -4,10 +4,34 @@ from typing import Any, Dict, Optional
 
 
 _COMMAND_ALIASES = {
-    "help": {"help", "/help", "مساعدة", "الأوامر"},
-    "status": {"status", "/status", "الحالة", "حالة"},
-    "alerts": {"alerts", "/alerts", "التنبيهات", "التنبيهات الأخيرة"},
-    "connections": {"connections", "/connections", "الاتصالات"},
+    "help": {"help", "/help", "مساعدة", "الأوامر", "ماذا يمكنني أن أفعل"},
+    "status": {
+        "status",
+        "/status",
+        "الحالة",
+        "حالة",
+        "ما حالة المراقبة",
+        "كيف حالة المراقبة",
+        "هل المراقبة تعمل",
+        "هل البرنامج يعمل",
+        "كم عدد الاتصالات",
+    },
+    "alerts": {
+        "alerts",
+        "/alerts",
+        "التنبيهات",
+        "التنبيهات الأخيرة",
+        "هل يوجد تنبيهات",
+        "هل في تنبيهات",
+        "ما آخر التنبيهات",
+    },
+    "connections": {
+        "connections",
+        "/connections",
+        "الاتصالات",
+        "ما الاتصالات الحالية",
+        "اعرض الاتصالات الحالية",
+    },
     "recommendations": {
         "recommendations",
         "/recommendations",
@@ -28,7 +52,8 @@ _COMMANDS = {
 
 def parse_command(text: str) -> Optional[str]:
     """Return an allowlisted in-app command; never interpret shell syntax."""
-    return _COMMANDS.get(" ".join(text.casefold().split()))
+    normalized = " ".join(text.casefold().split()).strip("؟?!.،,:;")
+    return _COMMANDS.get(normalized)
 
 
 def isolation_recommendation(event: Dict[str, Any]) -> str:

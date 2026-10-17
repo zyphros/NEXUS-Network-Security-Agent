@@ -349,7 +349,8 @@ class NetworkAgentDashboard:
             text=(
                 "أوامر داخل التطبيق فقط: مساعدة، الحالة، التنبيهات، الاتصالات، "
                 "التوصيات، ابدأ، أوقف، التقارير.\n"
-                "الأسئلة الحرة تُرسل إلى Ollama عند توفره. لا تُنفذ أوامر النظام."
+                "الأسئلة الشائعة تعمل محليًا؛ الأسئلة الحرة تحتاج Ollama. "
+                "لا تُنفذ أوامر النظام."
             ),
             bg=PANEL,
             fg=MUTED,
@@ -372,14 +373,8 @@ class NetworkAgentDashboard:
         self.command_text.tag_configure("user", foreground=CYAN)
         self.command_text.tag_configure("assistant", foreground=TEXT)
         self.command_text.tag_configure("error", foreground=RED)
-        self.command_text.pack(fill="both", expand=True, padx=8, pady=5)
-        self._append_command_message(
-            "NEXUS",
-            "اكتب «مساعدة» لعرض الأوامر. يمكنك السؤال عن الحالة والتنبيهات؛ "
-            "الإجابات الذكية اختيارية وتعمل عبر Ollama.",
-        )
         command_controls = tk.Frame(command_page, bg=PANEL)
-        command_controls.pack(fill="x", padx=8, pady=(0, 8))
+        command_controls.pack(side="bottom", fill="x", padx=8, pady=(0, 8))
         self.command_entry = tk.Entry(
             command_controls,
             bg=PANEL_LIGHT,
@@ -406,6 +401,14 @@ class NetworkAgentDashboard:
             font=(self.font_family, 9, "bold"),
         )
         self.command_send_button.pack(side="right")
+        self.command_text.pack(fill="both", expand=True, padx=8, pady=5)
+        self._append_command_message(
+            "NEXUS",
+            "اكتب «مساعدة» لعرض الأوامر. يمكنك السؤال عن الحالة والتنبيهات؛ "
+            "الأسئلة الشائعة تعمل دون Ollama، والأسئلة الحرة تحتاج Ollama المحلي.",
+        )
+        assistant_tabs.select(command_page)
+        self.root.after_idle(self.command_entry.focus_set)
 
         footer = tk.Frame(outer, bg=BG)
         footer.pack(fill="x", pady=(11, 0))
