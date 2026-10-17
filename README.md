@@ -29,6 +29,7 @@
 
 - [Highlights](#highlights)
 - [Requirements](#requirements)
+- [Local models](#local-models)
 - [Quick start](#quick-start)
 - [Configuration](#configuration)
 - [Repository layout](#repository-layout)
@@ -43,31 +44,38 @@
 - Monitors network connection metadata exposed by Windows, Linux, or macOS through `psutil`; no packet payloads, browsing contents, or credentials are collected.
 - Applies explainable connection-count thresholds and a cooldown to reduce repeated alerts.
 - Optionally explains alerts with Ollama on the same device. No cloud AI API or API key is required.
+- Includes an on-demand web research tab: search queries go to Bing RSS, while bounded public result excerpts can be analyzed by a loopback Ollama model without sending dashboard data.
 - Keeps monitoring responsive while the local model generates an explanation or answer.
 - Continues rule-based monitoring when Ollama is unavailable.
 - Offers an in-app command center for status, recent alerts, sampled connections, advisory isolation guidance, reports, and start/stop controls.
 - Adds cautious isolation recommendations to alerts without performing enforcement; any response remains an authorized operator's responsibility.
 - Optionally ingests warning-and-higher Syslog UDP messages and Wazuh `alerts.json` records as read-only events.
 - Stores application logs and reports in a per-user local data directory, outside the repository.
-- Uses bounded scans and a small, quantized 3B model by default to suit memory-constrained laptops.
+- Uses bounded scans and a small, quantized 3B model by default; Qwen3 4B is available as an optional, user-initiated download.
 
 ## Requirements
 
 - Windows 10/11, Linux, or macOS
 - Python 3.10 or later, including Tcl/Tk
 - Ollama for local AI explanations (optional for connection monitoring)
-- `qwen2.5:3b` in Ollama for the default local AI configuration
+- Ollama is optional; rule-based connection monitoring works without it.
 
-The default Qwen model is a quantized 3B model and downloads approximately 1.9 GB. AI inference uses local compute and may take time on a CPU-only laptop. The model is requested only when a rule-based alert occurs.
+## Local models
+
+`qwen2.5:3b` remains the default model. The dashboard offers `qwen3:4b` as an explicit download option; it checks the official manifest over HTTPS and refuses a model larger than 4 GiB. At verification time, the official Ollama `qwen3:4b` tag contained about 2.33 GiB of layers. Qwen3 4B is published under Apache 2.0; review the [official model card](https://huggingface.co/Qwen/Qwen3-4B) and verify the current license before commercial redistribution. **Use selected** saves the choice in `.env` for future launches.
+
+Model weights are not committed to GitHub or stored in the project directory; Ollama keeps them in its own local model store. They therefore do not count toward the repository's 4 GB size, though installing multiple models increases Ollama's separate disk usage. Download and activation are optional and never automatic. Local inference may use substantial memory and CPU and can slow resource-limited devices; rule-based monitoring remains available with AI disabled.
 
 ## Quick start
 
 1. Install Python 3.10+ with Tk/Tcl support. On Linux, install your distribution's Tk package (commonly `python3-tk`) if it is not included. Install and start [Ollama](https://ollama.com/) only if you want AI explanations.
-2. Download the model once:
+2. For the default model, download it once:
 
    ```powershell
    ollama pull qwen2.5:3b
    ```
+
+   Alternatively, start Ollama and download `qwen3:4b` from the dashboard's **Local model** controls. Select and activate a downloaded model in the same controls. Downloading weights requires an internet connection.
 
 3. On Windows, double-click `setup_windows.bat`. On Linux or macOS, run `bash setup_unix.sh`. Both create an isolated Python environment in your user home and install `psutil`.
 4. On Windows, double-click `run_dashboard.bat`. On Linux or macOS, run `bash run_dashboard.sh`.
@@ -160,6 +168,8 @@ GitHub Actions runs the syntax checks and unit tests on Windows, Ubuntu Linux, a
 ├── network_threat_detection.py # Connection collection and rule-based monitoring
 ├── command_center.py          # Allowlisted dashboard commands and advisory guidance
 ├── security_event_ingest.py   # Bounded Syslog UDP and read-only JSON alert inputs
+├── local_model_manager.py     # Allowlisted, size-bounded Ollama model downloads
+├── web_research.py            # Bounded public web search and result extraction
 ├── setup_unix.sh              # Linux/macOS Python environment setup
 ├── run_dashboard.sh           # Linux/macOS desktop launch
 ├── run_agent.sh               # Linux/macOS terminal launch
@@ -171,7 +181,9 @@ GitHub Actions runs the syntax checks and unit tests on Windows, Ubuntu Linux, a
 ├── tests/
 │   ├── test_command_center.py  # Command allowlist, question, and recommendation tests
 │   ├── test_rule_detector.py  # Rule-detector unit tests
-│   └── test_security_event_ingest.py # Integration input tests
+│   ├── test_security_event_ingest.py # Integration input tests
+│   ├── test_local_model_manager.py # Local model download and selection tests
+│   └── test_web_research.py   # Web search and local-analysis tests
 ├── .github/workflows/
 │   └── cross-platform-tests.yml # Windows, Ubuntu, and macOS test matrix
 ├── README.md                  # English project guide
@@ -188,6 +200,8 @@ GitHub Actions runs the syntax checks and unit tests on Windows, Ubuntu Linux, a
 - Enabled integrations may include security-event descriptions, sender/source IPs, rule IDs, severity, and agent names in local reports. Review and protect these files as security-sensitive data.
 - The tool does not capture packet content, passwords, browser history, or credentials; it does not block connections or change firewall settings.
 - Optional AI explanations and free-form dashboard questions are sent only to the configured Ollama endpoint. Keep `OLLAMA_URL` local if you intend to keep data on the device.
+- Web research runs only after the user submits a query. The query is sent to Bing; only public result titles, URLs, and snippets are sent to Ollama for analysis. That analysis requires a loopback Ollama endpoint and excludes connection snapshots, alerts, and dashboard question history.
+- Search queries and linked result pages are handled under Microsoft's and the linked sites' privacy policies. Open only trusted result links; search excerpts and local AI summaries may be incomplete or misleading.
 - Recent free-form Q&A history is kept in memory for follow-up questions only; it is not written to disk by the command center.
 - The command center recognizes fixed in-app commands and common status/alert questions offline (help, status, alerts, connections, recommendations, start/stop monitoring, and reports). Other text is a question for Ollama; no shell or operating-system command is executed.
 - Isolation guidance is advisory. NEXUS does not terminate processes, block connections, apply firewall rules, or isolate a device.
@@ -197,6 +211,7 @@ GitHub Actions runs the syntax checks and unit tests on Windows, Ubuntu Linux, a
 ## Limitations
 
 - This is connection-metadata monitoring, not packet capture or a full endpoint/network security product.
+- Web research requires internet access and a compatible Bing RSS response. It extracts up to five results; it does not crawl full pages, guarantee source reliability, or replace checking cited pages directly.
 - Integrations cover Syslog UDP and selected Wazuh, Suricata, Zeek, and Snort alert-file formats only; this is not a universal SIEM/EDR connector, a clustered data-center service, or a high-availability event pipeline.
 - The Wazuh file input must be readable from the machine running NEXUS. Network shares, permissions, event delivery, and firewall rules must be configured and secured by the operator.
 - Syslog UDP does not authenticate senders or encrypt traffic. Use it only on a trusted network or through a protected relay.
@@ -212,7 +227,7 @@ GitHub Actions runs the syntax checks and unit tests on Windows, Ubuntu Linux, a
 The rule detector and dashboard can be smoke-tested with the installed environment:
 
 ```sh
-python -m py_compile network_threat_detection.py network_agent_gui.py security_event_ingest.py command_center.py
+python -m py_compile network_threat_detection.py network_agent_gui.py security_event_ingest.py command_center.py web_research.py
 python -m unittest discover -s tests -v
 python network_threat_detection.py --once --no-ai
 ```

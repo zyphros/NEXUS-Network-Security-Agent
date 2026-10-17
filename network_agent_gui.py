@@ -8,12 +8,20 @@ import tkinter.font as tkfont
 import webbrowser
 from datetime import datetime
 from tkinter import messagebox, ttk
-from typing import Any, Dict, List, Optional
 from urllib.error import URLError
+from typing import Any, Dict, List, Optional
+from urllib.parse import urlparse
 from urllib.request import urlopen
 
 import network_threat_detection as agent
 from command_center import isolation_recommendation, parse_command
+from local_model_manager import (
+    SUPPORTED_MODELS,
+    installed_models,
+    persist_model_selection,
+    pull_model,
+)
+from web_research import MAX_QUERY_CHARS, search_web
 
 
 BG = "#07111f"
@@ -44,7 +52,10 @@ class NetworkAgentDashboard:
         self.alert_count = 0
         self.ai_busy = False
         self.command_busy = False
+        self.web_busy = False
+        self.model_busy = False
         self.ollama_available = False
+        self.available_models: set[str] = set()
         self.latest_snapshot: Dict[str, Any] = {}
         self.latest_summary: Dict[str, Any] = {}
         self.recent_alerts: List[Dict[str, Any]] = []
@@ -56,6 +67,7 @@ class NetworkAgentDashboard:
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
         self.root.after(150, self._drain_events)
         self.root.after(350, self._check_ollama)
+        self.root.after(500, self._refresh_models)
 
     def _configure_styles(self) -> None:
         self.font_family = tkfont.nametofont("TkDefaultFont", root=self.root).cget("family")
@@ -105,6 +117,14 @@ class NetworkAgentDashboard:
             foreground=[("readonly", TEXT)],
             selectbackground=[("readonly", PANEL_LIGHT)],
             selectforeground=[("readonly", TEXT)],
+        )
+        style.configure(
+            "Cyber.Horizontal.TProgressbar",
+            troughcolor=PANEL_LIGHT,
+            background=CYAN,
+            bordercolor=LINE,
+            lightcolor=CYAN,
+            darkcolor=CYAN,
         )
 
     def _build_layout(self) -> None:
@@ -228,6 +248,72 @@ class NetworkAgentDashboard:
             state="disabled",
         )
         self.stop_button.pack(side="left")
+
+        model_panel = tk.Frame(outer, bg=PANEL, highlightthickness=1, highlightbackground=LINE)
+        model_panel.pack(fill="x", pady=(0, 14))
+        model_controls = tk.Frame(model_panel, bg=PANEL)
+        model_controls.pack(fill="x", padx=15, pady=10)
+        tk.Label(
+            model_controls, text="النموذج المحلي", bg=PANEL, fg=MUTED, font=self.font_small
+        ).pack(side="left", padx=(0, 8))
+        self.model_var = tk.StringVar(
+            value=agent.AI_MODEL if agent.AI_MODEL in SUPPORTED_MODELS else SUPPORTED_MODELS[0]
+        )
+        self.model_box = ttk.Combobox(
+            model_controls,
+            textvariable=self.model_var,
+            values=SUPPORTED_MODELS,
+            width=16,
+            state="readonly",
+            style="Cyber.TCombobox",
+        )
+        self.model_box.pack(side="left", padx=(0, 8))
+        self.model_box.bind("<<ComboboxSelected>>", self._on_model_choice)
+        self.model_use_button = tk.Button(
+            model_controls,
+            text="استخدام المحدد",
+            command=self._activate_selected_model,
+            bg="#15344c",
+            fg=TEXT,
+            activebackground="#1b4965",
+            activeforeground="white",
+            relief="flat",
+            bd=0,
+            padx=11,
+            pady=7,
+            cursor="hand2",
+            font=(self.font_family, 9, "bold"),
+        )
+        self.model_use_button.pack(side="left", padx=(0, 7))
+        self.model_pull_button = tk.Button(
+            model_controls,
+            text="تنزيل المحدد",
+            command=self._start_model_download,
+            bg="#0d665c",
+            fg="#eafff6",
+            activebackground="#138272",
+            activeforeground="white",
+            relief="flat",
+            bd=0,
+            padx=11,
+            pady=7,
+            cursor="hand2",
+            font=(self.font_family, 9, "bold"),
+        )
+        self.model_pull_button.pack(side="left", padx=(0, 10))
+        self.model_status_label = tk.Label(
+            model_controls,
+            text="إدارة محلية اختيارية؛ لا يبدأ أي تنزيل تلقائيًا.",
+            bg=PANEL,
+            fg=MUTED,
+            font=self.font_small,
+            anchor="w",
+        )
+        self.model_status_label.pack(side="left", fill="x", expand=True)
+        self.model_progress = ttk.Progressbar(
+            model_panel, mode="determinate", maximum=100, style="Cyber.Horizontal.TProgressbar"
+        )
+        self.model_progress.pack(fill="x", padx=15, pady=(0, 10))
 
         metrics = tk.Frame(outer, bg=BG)
         metrics.pack(fill="x", pady=(0, 14))
@@ -410,6 +496,120 @@ class NetworkAgentDashboard:
         assistant_tabs.select(command_page)
         self.root.after_idle(self.command_entry.focus_set)
 
+        research_page = tk.Frame(assistant_tabs, bg=PANEL)
+        assistant_tabs.add(research_page, text="بحث الإنترنت")
+        tk.Label(
+            research_page,
+            text=(
+                "يُرسل نص البحث فقط إلى Bing. تُحلل المقتطفات عبر Ollama "
+                "المحلي؛ لا تُرسل بيانات الاتصالات أو أسئلة اللوحة لمحرك البحث."
+            ),
+            bg=PANEL,
+            fg=MUTED,
+            justify="right",
+            wraplength=500,
+            font=self.font_small,
+        ).pack(fill="x", padx=8, pady=(8, 5))
+        research_controls = tk.Frame(research_page, bg=PANEL)
+        research_controls.pack(fill="x", padx=8, pady=(0, 6))
+        self.web_search_entry = tk.Entry(
+            research_controls,
+            bg=PANEL_LIGHT,
+            fg=TEXT,
+            insertbackground=CYAN,
+            relief="flat",
+            font=(self.font_family, 10),
+        )
+        self.web_search_entry.pack(side="left", fill="x", expand=True, ipady=8, padx=(0, 7))
+        self.web_search_entry.bind("<Return>", self.submit_web_search)
+        self.web_search_button = tk.Button(
+            research_controls,
+            text="بحث",
+            command=self.submit_web_search,
+            bg="#0d665c",
+            fg="#eafff6",
+            activebackground="#138272",
+            activeforeground="white",
+            relief="flat",
+            bd=0,
+            padx=12,
+            pady=7,
+            cursor="hand2",
+            font=(self.font_family, 9, "bold"),
+        )
+        self.web_search_button.pack(side="right")
+        self.web_analysis_var = tk.BooleanVar(value=True)
+        tk.Checkbutton(
+            research_page,
+            text="تحليل النتائج محليًا عبر Ollama",
+            variable=self.web_analysis_var,
+            bg=PANEL,
+            fg=TEXT,
+            activebackground=PANEL,
+            activeforeground=CYAN,
+            selectcolor=PANEL_LIGHT,
+            font=(self.font_family, 9, "bold"),
+            bd=0,
+            highlightthickness=0,
+        ).pack(anchor="e", padx=8, pady=(0, 5))
+        self.web_status_label = tk.Label(
+            research_page,
+            text="جاهز للبحث — لا يبدأ الاتصال حتى تضغط بحث.",
+            bg=PANEL,
+            fg=MUTED,
+            anchor="e",
+            font=self.font_small,
+        )
+        self.web_status_label.pack(fill="x", padx=8, pady=(0, 4))
+
+        results_frame = tk.Frame(research_page, bg=PANEL)
+        results_frame.pack(fill="both", expand=True, padx=8, pady=(0, 5))
+        tk.Label(
+            results_frame, text="نتائج البحث ومصادرها", bg=PANEL, fg=CYAN,
+            anchor="e", font=(self.font_family, 9, "bold")
+        ).pack(fill="x", pady=(0, 3))
+        results_body = tk.Frame(results_frame, bg="#091421")
+        results_body.pack(fill="both", expand=True)
+        self.web_results_text = tk.Text(
+            results_body,
+            height=8,
+            bg="#091421",
+            fg=TEXT,
+            insertbackground=CYAN,
+            relief="flat",
+            wrap="word",
+            font=(self.font_family, 9),
+            padx=9,
+            pady=7,
+            state="disabled",
+        )
+        results_scrollbar = ttk.Scrollbar(
+            results_body, orient="vertical", command=self.web_results_text.yview
+        )
+        self.web_results_text.configure(yscrollcommand=results_scrollbar.set)
+        self.web_results_text.pack(side="left", fill="both", expand=True)
+        results_scrollbar.pack(side="right", fill="y")
+
+        analysis_frame = tk.Frame(research_page, bg=PANEL)
+        analysis_frame.pack(fill="x", padx=8, pady=(0, 8))
+        tk.Label(
+            analysis_frame, text="التحليل المحلي", bg=PANEL, fg=GREEN,
+            anchor="e", font=(self.font_family, 9, "bold")
+        ).pack(fill="x", pady=(0, 3))
+        self.web_analysis_text = tk.Text(
+            analysis_frame,
+            height=5,
+            bg="#091421",
+            fg="#c7d6e5",
+            relief="flat",
+            wrap="word",
+            font=(self.font_family, 9),
+            padx=9,
+            pady=7,
+            state="disabled",
+        )
+        self.web_analysis_text.pack(fill="x")
+
         footer = tk.Frame(outer, bg=BG)
         footer.pack(fill="x", pady=(11, 0))
         self.status_text = tk.Label(
@@ -521,6 +721,43 @@ class NetworkAgentDashboard:
         elif event_type == "ollama_status":
             self.ollama_available = bool(event.get("available"))
             self.ollama_label.configure(text=event["text"], fg=event["color"])
+        elif event_type == "model_list":
+            self.available_models = set(event["models"])
+            selected = self.model_var.get()
+            if selected in self.available_models:
+                self.model_status_label.configure(
+                    text=f"النموذج المحدد مثبت: {selected}",
+                    fg=GREEN,
+                )
+            else:
+                self.model_status_label.configure(
+                    text=f"{selected} غير مثبت؛ اضغط «تنزيل المحدد» عند الحاجة.",
+                    fg=AMBER,
+                )
+        elif event_type == "model_list_error":
+            self.model_status_label.configure(text=event["message"], fg=RED)
+        elif event_type == "model_pull_progress":
+            update = event["update"]
+            total = update.get("total")
+            completed = update.get("completed")
+            status = update.get("status", "جارٍ التنزيل")
+            if type(total) is int and total > 0 and type(completed) is int:
+                self.model_progress.configure(value=min(100, completed * 100 / total))
+                status = f"{status}  •  {completed * 100 / total:.0f}% من الجزء الحالي"
+            self.model_status_label.configure(text=str(status), fg=AMBER)
+        elif event_type == "model_pull_complete":
+            self.model_busy = False
+            self.model_pull_button.configure(state="normal")
+            self.model_progress.configure(value=100)
+            self.model_status_label.configure(
+                text=f"اكتمل تنزيل {event['model']}; اختر «استخدام المحدد» لتفعيله.",
+                fg=GREEN,
+            )
+            self._refresh_models()
+        elif event_type == "model_pull_error":
+            self.model_busy = False
+            self.model_pull_button.configure(state="normal")
+            self.model_status_label.configure(text=event["message"], fg=RED)
         elif event_type == "command_answer":
             self.command_busy = False
             self.command_send_button.configure(state="normal")
@@ -541,6 +778,42 @@ class NetworkAgentDashboard:
                 "NEXUS",
                 f"تعذر الحصول على الإجابة: {event.get('message', 'خطأ غير معروف')}",
                 "error",
+            )
+        elif event_type == "web_search_results":
+            self._show_web_results(event["results"])
+            if event.get("analyzing"):
+                self.web_status_label.configure(
+                    text="اكتمل البحث؛ يجري تحليل المقتطفات على Ollama المحلي…",
+                    fg=AMBER,
+                )
+            elif event.get("analysis_skipped"):
+                self._finish_web_search(
+                    "اكتمل البحث؛ Ollama غير متاح، لذا لم يُجرَ تحليل محلي.",
+                    AMBER,
+                )
+            else:
+                self._finish_web_search("اكتمل البحث.", GREEN)
+        elif event_type == "web_analysis_answer":
+            self.web_analysis_text.configure(state="normal")
+            self.web_analysis_text.delete("1.0", "end")
+            self.web_analysis_text.insert("end", event["analysis"])
+            self.web_analysis_text.configure(state="disabled")
+            self._finish_web_search("اكتمل البحث والتحليل المحلي.", GREEN)
+        elif event_type == "web_analysis_error":
+            self.web_analysis_text.configure(state="normal")
+            self.web_analysis_text.delete("1.0", "end")
+            self.web_analysis_text.insert(
+                "end", f"تعذر تحليل النتائج محليًا: {event['message']}"
+            )
+            self.web_analysis_text.configure(state="disabled")
+            self._finish_web_search(
+                "ظهرت نتائج البحث، لكن التحليل المحلي تعذّر. راجع الرسالة أدناه.",
+                AMBER,
+            )
+        elif event_type == "web_search_error":
+            self._finish_web_search(
+                f"تعذر البحث: {event['message']}",
+                RED,
             )
         elif event_type == "integration_status":
             for source in event.get("sources", []):
@@ -763,6 +1036,95 @@ class NetworkAgentDashboard:
                 {"type": "command_error", "message": f"{type(exc).__name__}: {exc}"}
             )
 
+    def submit_web_search(self, _event: Optional[Any] = None) -> str:
+        query = self.web_search_entry.get().strip()
+        if not query or self.web_busy:
+            return "break"
+        if len(query) > MAX_QUERY_CHARS:
+            self.web_status_label.configure(
+                text=f"عبارة البحث محدودة بـ{MAX_QUERY_CHARS} حرفًا.",
+                fg=RED,
+            )
+            return "break"
+
+        analyze_locally = self.web_analysis_var.get()
+        ollama_available = self.ollama_available
+        self.web_busy = True
+        self.web_search_button.configure(state="disabled")
+        self.web_status_label.configure(text="جارٍ البحث في الويب…", fg=AMBER)
+        self.web_analysis_text.configure(state="normal")
+        self.web_analysis_text.delete("1.0", "end")
+        self.web_analysis_text.configure(state="disabled")
+        threading.Thread(
+            target=self._web_research_worker,
+            args=(query, analyze_locally, ollama_available),
+            name="web-search-and-local-analysis",
+            daemon=True,
+        ).start()
+        return "break"
+
+    def _web_research_worker(
+        self, query: str, analysis_requested: bool, ollama_available: bool
+    ) -> None:
+        analyze_locally = analysis_requested and ollama_available
+        try:
+            results = search_web(query)
+        except Exception as exc:
+            agent.logger.exception("Public web search failed")
+            self.events.put(
+                {"type": "web_search_error", "message": f"{type(exc).__name__}: {exc}"}
+            )
+            return
+
+        self.events.put(
+            {
+                "type": "web_search_results",
+                "results": results,
+                "analyzing": analyze_locally,
+                "analysis_skipped": analysis_requested and not ollama_available,
+            }
+        )
+        if not analyze_locally:
+            return
+        try:
+            analysis = agent.analyze_web_search_locally(query, results)
+            self.events.put({"type": "web_analysis_answer", "analysis": analysis})
+        except Exception as exc:
+            agent.logger.exception("Local analysis of web search results failed")
+            self.events.put(
+                {"type": "web_analysis_error", "message": f"{type(exc).__name__}: {exc}"}
+            )
+
+    def _show_web_results(self, results: List[Dict[str, str]]) -> None:
+        self.web_results_text.configure(state="normal")
+        self.web_results_text.delete("1.0", "end")
+        for index, result in enumerate(results, start=1):
+            self.web_results_text.insert("end", f"{index}. {result['title']}\n")
+            if result.get("snippet"):
+                self.web_results_text.insert("end", f"{result['snippet']}\n")
+            tag = f"web_link_{index}"
+            self.web_results_text.insert("end", f"↗ {result['url']}\n\n", tag)
+            self.web_results_text.tag_configure(tag, foreground=CYAN, underline=True)
+            self.web_results_text.tag_bind(
+                tag,
+                "<Button-1>",
+                lambda _event, url=result["url"]: self._open_web_result(url),
+            )
+        self.web_results_text.configure(state="disabled")
+
+    def _open_web_result(self, url: str) -> None:
+        parsed = urlparse(url)
+        if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+            self._add_event("رابط نتيجة البحث غير صالح؛ لم يتم فتحه.", "error")
+            return
+        if not webbrowser.open_new_tab(url):
+            self._add_event("تعذر فتح رابط البحث في المتصفح الافتراضي.", "error")
+
+    def _finish_web_search(self, message: str, color: str) -> None:
+        self.web_busy = False
+        self.web_search_button.configure(state="normal")
+        self.web_status_label.configure(text=message, fg=color)
+
     def _add_event(self, message: str, tag: str = "normal") -> None:
         self.event_text.configure(state="normal")
         timestamp = datetime.now().strftime("%H:%M:%S")
@@ -794,6 +1156,113 @@ class NetworkAgentDashboard:
     def _check_ollama(self) -> None:
         threading.Thread(target=self._probe_ollama, name="ollama-status-check", daemon=True).start()
         self.root.after(30000, self._check_ollama)
+
+    def _refresh_models(self) -> None:
+        threading.Thread(
+            target=self._list_models_worker,
+            name="ollama-model-list",
+            daemon=True,
+        ).start()
+
+    def _list_models_worker(self) -> None:
+        try:
+            models = installed_models(agent.OLLAMA_URL)
+            self.events.put({"type": "model_list", "models": models})
+        except Exception as exc:
+            agent.logger.exception("Could not list locally installed Ollama models")
+            self.events.put(
+                {
+                    "type": "model_list_error",
+                    "message": f"تعذرت إدارة النماذج: {type(exc).__name__}: {exc}",
+                }
+            )
+
+    def _activate_selected_model(self) -> None:
+        model = self.model_var.get()
+        if model not in SUPPORTED_MODELS:
+            self.model_status_label.configure(text="اختر نموذجًا من القائمة.", fg=RED)
+            return
+        if model not in self.available_models:
+            self.model_status_label.configure(
+                text="النموذج غير مثبت؛ نزّله أولًا من Ollama المحلي.", fg=AMBER
+            )
+            return
+        try:
+            persist_model_selection(model, agent.APP_DIR / ".env")
+        except RuntimeError as exc:
+            agent.logger.exception("Could not persist the selected local AI model")
+            self.model_status_label.configure(text=str(exc), fg=RED)
+            return
+        agent.AI_MODEL = model
+        self.model_status_label.configure(text=f"النموذج النشط: {model}", fg=GREEN)
+        threading.Thread(
+            target=self._probe_ollama,
+            name="ollama-status-check",
+            daemon=True,
+        ).start()
+
+    def _on_model_choice(self, _event: Optional[Any] = None) -> None:
+        model = self.model_var.get()
+        if model in self.available_models:
+            self.model_status_label.configure(text=f"النموذج مثبت: {model}", fg=GREEN)
+        else:
+            self.model_status_label.configure(text=f"{model} غير مثبت.", fg=AMBER)
+
+    def _start_model_download(self) -> None:
+        model = self.model_var.get()
+        if model not in SUPPORTED_MODELS:
+            self.model_status_label.configure(text="اختر نموذجًا من القائمة.", fg=RED)
+            return
+        if self.model_busy:
+            return
+        if model in self.available_models:
+            self.model_status_label.configure(text=f"{model} مثبت بالفعل.", fg=GREEN)
+            return
+        self.model_busy = True
+        self.model_pull_button.configure(state="disabled")
+        self.model_progress.configure(value=0)
+        self.model_status_label.configure(
+            text="جارٍ التحقق من حجم النموذج الرسمي قبل التنزيل…", fg=AMBER
+        )
+        threading.Thread(
+            target=self._model_download_worker,
+            args=(model,),
+            name="ollama-model-download",
+            daemon=True,
+        ).start()
+
+    def _model_download_worker(self, model: str) -> None:
+        last_progress = None
+
+        def report_progress(update: Dict[str, Any]) -> None:
+            nonlocal last_progress
+            completed = update.get("completed")
+            total = update.get("total")
+            percent = (
+                min(100, int(completed * 100 / total))
+                if type(completed) is int and type(total) is int and total > 0
+                else None
+            )
+            state = (update.get("status"), update.get("digest"), percent)
+            if state != last_progress:
+                self.events.put({"type": "model_pull_progress", "update": update})
+                last_progress = state
+
+        try:
+            pull_model(
+                agent.OLLAMA_URL,
+                model,
+                report_progress,
+            )
+            self.events.put({"type": "model_pull_complete", "model": model})
+        except Exception as exc:
+            agent.logger.exception("Optional Ollama model download failed")
+            self.events.put(
+                {
+                    "type": "model_pull_error",
+                    "message": f"تعذر تنزيل النموذج: {type(exc).__name__}: {exc}",
+                }
+            )
 
     def _probe_ollama(self) -> None:
         try:
