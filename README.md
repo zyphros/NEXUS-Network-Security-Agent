@@ -62,7 +62,7 @@
 
 ## Local models
 
-`qwen2.5:3b` remains the default model. The dashboard offers `qwen3:4b` as an explicit download option; it checks the official manifest over HTTPS and refuses a model larger than 4 GiB. At verification time, the official Ollama `qwen3:4b` tag contained about 2.33 GiB of layers. Qwen3 4B is published under Apache 2.0; review the [official model card](https://huggingface.co/Qwen/Qwen3-4B) and verify the current license before commercial redistribution. **Use selected** saves the choice in `.env` for future launches.
+`qwen2.5:3b` remains the default model to avoid imposing extra load on a laptop. The dashboard offers `qwen3:4b` and `qwen3:8b` as explicit download options; it checks the official manifest over HTTPS and refuses a model larger than 5.5 GB. At verification time, official Ollama layers measured about 2.50 GB for `qwen3:4b` and 5.23 GB for `qwen3:8b`. Qwen3 8B offers greater capability but uses more RAM and CPU and may slow the device; the dashboard asks before downloading it. Qwen3 weights are published under Apache 2.0; review the [official Qwen3 8B model card](https://huggingface.co/Qwen/Qwen3-8B) and verify the current license before commercial redistribution. **Use selected** saves the choice in `.env` for future launches.
 
 Model weights are not committed to GitHub or stored in the project directory; Ollama keeps them in its own local model store. They therefore do not count toward the repository's 4 GB size, though installing multiple models increases Ollama's separate disk usage. Download and activation are optional and never automatic. Local inference may use substantial memory and CPU and can slow resource-limited devices; rule-based monitoring remains available with AI disabled.
 
@@ -75,7 +75,7 @@ Model weights are not committed to GitHub or stored in the project directory; Ol
    ollama pull qwen2.5:3b
    ```
 
-   Alternatively, start Ollama and download `qwen3:4b` from the dashboard's **Local model** controls. Select and activate a downloaded model in the same controls. Downloading weights requires an internet connection.
+   Alternatively, start Ollama and download `qwen3:4b` or (if the laptop has enough resources) `qwen3:8b` from the dashboard's **Local model** controls. Select and activate a downloaded model in the same controls. Downloading weights requires an internet connection.
 
 3. On Windows, double-click `setup_windows.bat`. On Linux or macOS, run `bash setup_unix.sh`. Both create an isolated Python environment in your user home and install `psutil`.
 4. On Windows, double-click `run_dashboard.bat`. On Linux or macOS, run `bash run_dashboard.sh`.

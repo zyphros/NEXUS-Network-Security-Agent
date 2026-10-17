@@ -1204,9 +1204,15 @@ class NetworkAgentDashboard:
     def _on_model_choice(self, _event: Optional[Any] = None) -> None:
         model = self.model_var.get()
         if model in self.available_models:
-            self.model_status_label.configure(text=f"النموذج مثبت: {model}", fg=GREEN)
+            detail = "  •  أثقل على الذاكرة والمعالج." if model == "qwen3:8b" else ""
+            self.model_status_label.configure(
+                text=f"النموذج مثبت: {model}{detail}", fg=GREEN
+            )
         else:
-            self.model_status_label.configure(text=f"{model} غير مثبت.", fg=AMBER)
+            detail = "  •  قدرة أعلى واستهلاك أكبر للموارد." if model == "qwen3:8b" else ""
+            self.model_status_label.configure(
+                text=f"{model} غير مثبت.{detail}", fg=AMBER
+            )
 
     def _start_model_download(self) -> None:
         model = self.model_var.get()
@@ -1217,6 +1223,13 @@ class NetworkAgentDashboard:
             return
         if model in self.available_models:
             self.model_status_label.configure(text=f"{model} مثبت بالفعل.", fg=GREEN)
+            return
+        if model == "qwen3:8b" and not messagebox.askyesno(
+            "تنزيل نموذج أكبر",
+            "يحتاج Qwen3 8B إلى نحو 5.23 GB من مساحة Ollama، "
+            "ويستهلك ذاكرة ومعالجًا أكثر وقد يبطئ اللابتوب أثناء التحليل.\n\n"
+            "هل تريد متابعة التنزيل؟",
+        ):
             return
         self.model_busy = True
         self.model_pull_button.configure(state="disabled")

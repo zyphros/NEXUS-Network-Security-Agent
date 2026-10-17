@@ -10,12 +10,13 @@ from urllib.parse import urlsplit
 from urllib.request import Request, urlopen
 
 
-SUPPORTED_MODELS = ("qwen2.5:3b", "qwen3:4b")
-MAX_MODEL_BYTES = 4 * 1024**3
+SUPPORTED_MODELS = ("qwen2.5:3b", "qwen3:4b", "qwen3:8b")
+MAX_MODEL_BYTES = 5_500_000_000
 MAX_MANIFEST_BYTES = 128 * 1024
 REGISTRY_MANIFESTS = {
     "qwen2.5:3b": "https://registry.ollama.ai/v2/library/qwen2.5/manifests/3b",
     "qwen3:4b": "https://registry.ollama.ai/v2/library/qwen3/manifests/4b",
+    "qwen3:8b": "https://registry.ollama.ai/v2/library/qwen3/manifests/8b",
 }
 
 
@@ -55,8 +56,6 @@ def installed_models(base_url: str) -> list[str]:
         raise RuntimeError(f"استجابة قائمة نماذج Ollama غير صالحة: {exc}") from exc
     if not isinstance(payload, dict):
         raise RuntimeError("استجابة Ollama لقائمة النماذج غير صالحة.")
-    if not isinstance(payload, dict):
-        raise RuntimeError("استجابة Ollama لقائمة النماذج غير صالحة.")
     models = payload.get("models", [])
     if not isinstance(models, list):
         raise RuntimeError("استجابة Ollama لقائمة النماذج غير صالحة.")
@@ -93,7 +92,7 @@ def _verify_registry_size(model: str) -> int:
         raise RuntimeError("أحجام طبقات النموذج الرسمي غير صالحة.")
     total = sum(sizes)
     if total > MAX_MODEL_BYTES:
-        raise RuntimeError("حجم النموذج يتجاوز حد التنزيل البالغ 4 GiB؛ أُلغي التنزيل.")
+        raise RuntimeError("حجم النموذج يتجاوز حد التنزيل البالغ 5.5 GB؛ أُلغي التنزيل.")
     return total
 
 
@@ -155,7 +154,7 @@ def pull_model(
                     totals_by_digest[digest] = total
                     if sum(totals_by_digest.values()) > MAX_MODEL_BYTES:
                         raise RuntimeError(
-                            "تجاوز التنزيل حد 4 GiB المسموح؛ أُلغي تنزيل النموذج."
+                            "تجاوز التنزيل حد 5.5 GB المسموح؛ أُلغي تنزيل النموذج."
                         )
                 if on_progress is not None:
                     on_progress(

@@ -23,7 +23,7 @@ class LocalModelManagerTests(unittest.TestCase):
                 models.pull_model("http://127.0.0.1:11434", "arbitrary:latest")
         verify.assert_not_called()
 
-    def test_registry_size_is_summed_and_cannot_exceed_four_gib(self):
+    def test_registry_size_is_summed_and_cannot_exceed_five_point_five_gb(self):
         manifest = io.BytesIO(
             json.dumps({"layers": [{"size": 20}, {"size": 30}]}).encode()
         )
@@ -34,8 +34,22 @@ class LocalModelManagerTests(unittest.TestCase):
             json.dumps({"layers": [{"size": models.MAX_MODEL_BYTES + 1}]}).encode()
         )
         with patch.object(models, "urlopen", return_value=too_large):
-            with self.assertRaisesRegex(RuntimeError, "4 GiB"):
+            with self.assertRaisesRegex(RuntimeError, "5.5 GB"):
                 models._verify_registry_size("qwen3:4b")
+
+    def test_qwen3_eight_billion_parameter_model_fits_download_limit(self):
+        self.assertIn("qwen3:8b", models.SUPPORTED_MODELS)
+        self.assertEqual(
+            models.REGISTRY_MANIFESTS["qwen3:8b"],
+            "https://registry.ollama.ai/v2/library/qwen3/manifests/8b",
+        )
+        manifest = io.BytesIO(
+            json.dumps({"layers": [{"size": 5_225_387_677}]}).encode()
+        )
+        with patch.object(models, "urlopen", return_value=manifest):
+            self.assertEqual(
+                models._verify_registry_size("qwen3:8b"), 5_225_387_677
+            )
 
     def test_pull_uses_only_local_ollama_api_and_reports_progress(self):
         stream = io.BytesIO(
@@ -59,7 +73,7 @@ class LocalModelManagerTests(unittest.TestCase):
         )
         self.assertEqual(len(progress), 2)
 
-    def test_pull_rejects_streamed_layers_over_four_gib(self):
+    def test_pull_rejects_streamed_layers_over_five_point_five_gb(self):
         stream = io.BytesIO(
             json.dumps(
                 {
@@ -75,7 +89,7 @@ class LocalModelManagerTests(unittest.TestCase):
             patch.object(models, "urlopen", return_value=stream),
             patch.object(models, "_verify_registry_size", return_value=100),
         ):
-            with self.assertRaisesRegex(RuntimeError, "4 GiB"):
+            with self.assertRaisesRegex(RuntimeError, "5.5 GB"):
                 models.pull_model("http://127.0.0.1:11434", "qwen3:4b")
 
     def test_installed_model_names_are_returned(self):
@@ -109,6 +123,7 @@ class LocalModelManagerTests(unittest.TestCase):
             )
             with self.assertRaisesRegex(ValueError, "غير مدعوم"):
                 models.persist_model_selection("unknown:model", env_path)
+
 
 
 if __name__ == "__main__":
