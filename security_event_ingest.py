@@ -364,9 +364,10 @@ class SecurityEventIngestor:
                 raise FileNotFoundError(f"{label} file does not exist: {path}")
 
         for label, path, parser in configured_sources:
+            stat = path.stat()
             thread = threading.Thread(
                 target=self._tail_json_file,
-                args=(path, label, parser),
+                args=(path, label, parser, (stat.st_dev, stat.st_ino), stat.st_size),
                 name=f"{label.lower().replace(' ', '-')}-ingest",
                 daemon=True,
             )
@@ -416,6 +417,8 @@ class SecurityEventIngestor:
         path: Path,
         label: str,
         parser: Callable[[bytes], Optional[Dict[str, Any]]],
+        initial_identity: Tuple[int, int],
+        initial_position: int,
     ) -> None:
         file_handle = None
         position = 0
@@ -429,7 +432,14 @@ class SecurityEventIngestor:
                         if file_handle is not None:
                             file_handle.close()
                         file_handle = path.open("rb")
-                        file_handle.seek(0, os.SEEK_END)
+                        if (
+                            file_identity is None
+                            and identity == initial_identity
+                            and stat.st_size >= initial_position
+                        ):
+                            file_handle.seek(initial_position)
+                        else:
+                            file_handle.seek(0, os.SEEK_END)
                         position = file_handle.tell()
                         file_identity = identity
                         continue

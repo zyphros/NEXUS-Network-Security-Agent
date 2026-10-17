@@ -163,7 +163,6 @@ class SecurityEventIngestTests(unittest.TestCase):
             ingestor = SecurityEventIngestor(wazuh_alerts_file=alerts_path)
             try:
                 ingestor.start()
-                time.sleep(0.6)
                 with alerts_path.open("a", encoding="utf-8") as alerts_file:
                     alerts_file.write(json.dumps(new_record) + "\n")
 
