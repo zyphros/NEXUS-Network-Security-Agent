@@ -7,19 +7,26 @@ import tkinter as tk
 import tkinter.font as tkfont
 import webbrowser
 from datetime import datetime
-from tkinter import messagebox, ttk
+from pathlib import Path
+from tkinter import filedialog, messagebox, ttk
 from urllib.error import URLError
 from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse
 from urllib.request import urlopen
 
 import network_threat_detection as agent
+from case_reports import build_case_report, render_case_html
 from command_center import isolation_recommendation, parse_command
 from local_model_manager import (
     SUPPORTED_MODELS,
     installed_models,
     persist_model_selection,
     pull_model,
+)
+from static_malware_analysis import (
+    StaticAnalysisError,
+    analyze_file,
+    format_report,
 )
 from web_research import MAX_QUERY_CHARS, search_web
 
@@ -62,6 +69,9 @@ class NetworkAgentDashboard:
         self.recent_alerts: List[Dict[str, Any]] = []
         self.recent_security_events: List[Dict[str, Any]] = []
         self.question_history: List[Dict[str, str]] = []
+        self.case_sample_name = ""
+        self.case_static_report = ""
+        self.case_ai_analysis = ""
 
         self._configure_styles()
         self._build_layout()
@@ -616,9 +626,9 @@ class NetworkAgentDashboard:
         tk.Label(
             malware_page,
             text=(
-                "الصق نصًا ساكنًا فقط: strings أو imports أو pseudocode أو disassembly "
-                "أو تقرير sandbox. لا ترفع ولا تشغّل العينة. يستخدم التحليل نموذج Ollama "
-                "المحلي المحدد؛ اختر Qwen3 8B لمهام البرمجة الأثقل إذا كانت موارد جهازك كافية."
+                "حلّل ملفًا محليًا أو الصق strings/imports/disassembly داخل NEXUS. "
+                "التحليل يقرأ بايتات الملف للقراءة فقط ولا يشغّله أو يرسله للخارج؛ "
+                "يرسل التقرير النصي المستخرج فقط إلى Ollama المحلي. الحد 64 MiB."
             ),
             bg=PANEL,
             fg=MUTED,
@@ -626,6 +636,96 @@ class NetworkAgentDashboard:
             wraplength=500,
             font=self.font_small,
         ).pack(fill="x", padx=8, pady=(8, 5))
+        sample_controls = tk.Frame(malware_page, bg=PANEL)
+        sample_controls.pack(fill="x", padx=8, pady=(0, 5))
+        self.malware_file_var = tk.StringVar()
+        self.malware_file_entry = tk.Entry(
+            sample_controls,
+            textvariable=self.malware_file_var,
+            bg=PANEL_LIGHT,
+            fg=TEXT,
+            insertbackground=CYAN,
+            relief="flat",
+            font=(self.font_family, 9),
+            state="readonly",
+        )
+        self.malware_file_entry.pack(side="left", fill="x", expand=True, ipady=7, padx=(0, 7))
+        self.malware_browse_button = tk.Button(
+            sample_controls,
+            text="اختيار ملف",
+            command=self._browse_malware_sample,
+            bg="#15344c",
+            fg=TEXT,
+            activebackground="#1b4965",
+            activeforeground="white",
+            relief="flat",
+            bd=0,
+            padx=10,
+            pady=7,
+            cursor="hand2",
+            font=(self.font_family, 9, "bold"),
+        )
+        self.malware_browse_button.pack(side="right")
+        self.malware_file_analyze_button = tk.Button(
+            malware_page,
+            text="تحليل الملف محليًا",
+            command=self.submit_malware_file_analysis,
+            bg="#0d665c",
+            fg="#eafff6",
+            activebackground="#138272",
+            activeforeground="white",
+            relief="flat",
+            bd=0,
+            padx=12,
+            pady=7,
+            cursor="hand2",
+            font=(self.font_family, 9, "bold"),
+        )
+        self.malware_file_analyze_button.pack(anchor="w", padx=8, pady=(0, 5))
+        file_options = tk.Frame(malware_page, bg=PANEL)
+        file_options.pack(fill="x", padx=8, pady=(0, 6))
+        self.malware_ai_explain_var = tk.BooleanVar(value=False)
+        tk.Checkbutton(
+            file_options,
+            text="اطلب شرح Ollama المحلي (قد يستهلك CPU وذاكرة)",
+            variable=self.malware_ai_explain_var,
+            bg=PANEL,
+            fg=MUTED,
+            activebackground=PANEL,
+            activeforeground=TEXT,
+            selectcolor=PANEL_LIGHT,
+            font=self.font_small,
+        ).pack(side="left")
+        tk.Button(
+            file_options,
+            text="تصدير JSON",
+            command=lambda: self._export_case_report("json"),
+            bg="#15344c",
+            fg=TEXT,
+            activebackground="#1b4965",
+            activeforeground="white",
+            relief="flat",
+            bd=0,
+            padx=9,
+            pady=6,
+            cursor="hand2",
+            font=(self.font_family, 8, "bold"),
+        ).pack(side="right", padx=(5, 0))
+        tk.Button(
+            file_options,
+            text="تصدير HTML",
+            command=lambda: self._export_case_report("html"),
+            bg="#15344c",
+            fg=TEXT,
+            activebackground="#1b4965",
+            activeforeground="white",
+            relief="flat",
+            bd=0,
+            padx=9,
+            pady=6,
+            cursor="hand2",
+            font=(self.font_family, 8, "bold"),
+        ).pack(side="right")
         self.malware_artifact_text = tk.Text(
             malware_page,
             height=8,
@@ -643,7 +743,7 @@ class NetworkAgentDashboard:
         malware_controls.pack(fill="x", padx=8, pady=(0, 5))
         self.malware_analyze_button = tk.Button(
             malware_controls,
-            text="تحليل النص محليًا",
+            text="تحليل النص الملصق",
             command=self.submit_malware_analysis,
             bg="#0d665c",
             fg="#eafff6",
@@ -659,7 +759,7 @@ class NetworkAgentDashboard:
         self.malware_analyze_button.pack(side="left")
         self.malware_status_label = tk.Label(
             malware_controls,
-            text="تحليل نصي محلي عند الطلب؛ لا تُرسل ملفات أو تُنفّذ عينات.",
+            text="ملف أو نص ملصق؛ كل التحليل داخل NEXUS وOllama المحلي.",
             bg=PANEL,
             fg=MUTED,
             anchor="w",
@@ -838,21 +938,64 @@ class NetworkAgentDashboard:
         elif event_type == "malware_analysis_answer":
             self.malware_analysis_busy = False
             self.malware_analyze_button.configure(state="normal")
+            self.malware_file_analyze_button.configure(state="normal")
+            self.malware_browse_button.configure(state="normal")
             self.malware_status_label.configure(
-                text=f"اكتمل التحليل المحلي باستخدام {event['model']}. راجع النتيجة نقديًا.",
+                text=f"اكتمل التحليل الساكن المحلي باستخدام {event['model']}. راجع النتيجة نقديًا.",
                 fg=GREEN,
             )
+            self.case_ai_analysis = event["analysis"]
             self.malware_result_text.configure(state="normal")
             self.malware_result_text.delete("1.0", "end")
+            if event.get("static_report"):
+                self.malware_result_text.insert(
+                    "end",
+                    "التقرير المستخرج محليًا\n"
+                    f"{event['static_report']}\n\n"
+                    "تحليل النموذج المحلي\n",
+                )
             self.malware_result_text.insert("end", event["analysis"])
             self.malware_result_text.configure(state="disabled")
         elif event_type == "malware_analysis_error":
             self.malware_analysis_busy = False
             self.malware_analyze_button.configure(state="normal")
+            self.malware_file_analyze_button.configure(state="normal")
+            self.malware_browse_button.configure(state="normal")
             self.malware_status_label.configure(
                 text=f"تعذر التحليل المحلي: {event['message']}",
                 fg=RED,
             )
+        elif event_type == "malware_static_report":
+            self.case_sample_name = event.get("sample_name", self.case_sample_name)
+            self.case_static_report = event["static_report"]
+            self.case_ai_analysis = ""
+            self.malware_result_text.configure(state="normal")
+            self.malware_result_text.delete("1.0", "end")
+            self.malware_result_text.insert("end", event["static_report"])
+            self.malware_result_text.configure(state="disabled")
+            if event.get("model_requested") and event.get("model_available"):
+                self.malware_status_label.configure(
+                    text="اكتمل الفحص الساكن؛ يجري تحليل التقرير بالنموذج المحلي…",
+                    fg=AMBER,
+                )
+            elif event.get("model_requested"):
+                self.malware_analysis_busy = False
+                self.malware_analyze_button.configure(state="normal")
+                self.malware_file_analyze_button.configure(state="normal")
+                self.malware_browse_button.configure(state="normal")
+                self.malware_status_label.configure(
+                    text="اكتمل الفحص الساكن؛ Ollama غير متاح، لذا عُرض التقرير دون شرح ذكي.",
+                    fg=AMBER,
+                )
+            else:
+                self.malware_analysis_busy = False
+                self.malware_analyze_button.configure(state="normal")
+                self.malware_file_analyze_button.configure(state="normal")
+                self.malware_browse_button.configure(state="normal")
+                self.malware_status_label.configure(
+                    text="اكتمل الفحص الساكن المحلي؛ لم يُطلب تحليل Ollama.",
+                    fg=GREEN,
+                )
         elif event_type == "command_answer":
             self.command_busy = False
             self.command_send_button.configure(state="normal")
@@ -1214,8 +1357,13 @@ class NetworkAgentDashboard:
             return "break"
 
         model = agent.AI_MODEL
+        self.case_sample_name = "User-provided text"
+        self.case_static_report = artifact
+        self.case_ai_analysis = ""
         self.malware_analysis_busy = True
         self.malware_analyze_button.configure(state="disabled")
+        self.malware_file_analyze_button.configure(state="disabled")
+        self.malware_browse_button.configure(state="disabled")
         self.malware_status_label.configure(
             text=f"جارٍ تحليل النص محليًا باستخدام {model}…",
             fg=AMBER,
@@ -1230,6 +1378,146 @@ class NetworkAgentDashboard:
             daemon=True,
         ).start()
         return "break"
+
+    def _browse_malware_sample(self) -> None:
+        selected = filedialog.askopenfilename(
+            title="اختر ملفًا للتحليل الساكن المحلي",
+            filetypes=(
+                ("Executable and library files", "*.exe *.dll *.sys *.ocx *.elf *.so *.dylib"),
+                ("All files", "*.*"),
+            ),
+        )
+        if selected:
+            self.malware_file_var.set(selected)
+            self.malware_status_label.configure(
+                text="تم اختيار ملف محلي؛ لن يُشغّل أو يُرسل إلى الإنترنت.",
+                fg=GREEN,
+            )
+
+    def submit_malware_file_analysis(self) -> str:
+        file_path = self.malware_file_var.get()
+        if self.malware_analysis_busy:
+            return "break"
+        if not file_path:
+            self.malware_status_label.configure(
+                text="اختر ملفًا أولًا للتحليل الساكن.",
+                fg=AMBER,
+            )
+            return "break"
+        model = agent.AI_MODEL
+        model_requested = self.malware_ai_explain_var.get()
+        analyze_with_model = model_requested and self.ollama_available
+        self.case_sample_name = Path(file_path).name
+        self.case_static_report = ""
+        self.case_ai_analysis = ""
+        self.malware_analysis_busy = True
+        self.malware_analyze_button.configure(state="disabled")
+        self.malware_file_analyze_button.configure(state="disabled")
+        self.malware_browse_button.configure(state="disabled")
+        self.malware_status_label.configure(
+            text="جارٍ استخراج بيانات الملف محليًا؛ لم يتم تشغيله…",
+            fg=AMBER,
+        )
+        self.malware_result_text.configure(state="normal")
+        self.malware_result_text.delete("1.0", "end")
+        self.malware_result_text.configure(state="disabled")
+        threading.Thread(
+            target=self._malware_file_analysis_worker,
+            args=(Path(file_path), model, model_requested, analyze_with_model),
+            name="local-static-file-analysis",
+            daemon=True,
+        ).start()
+        return "break"
+
+    def _malware_file_analysis_worker(
+        self,
+        file_path: Path,
+        model: str,
+        model_requested: bool,
+        analyze_with_model: bool,
+    ) -> None:
+        try:
+            metadata = analyze_file(file_path)
+            report = format_report(metadata, file_path.name)
+            if len(report) > agent.MAX_MALWARE_ARTIFACT_CHARS:
+                raise StaticAnalysisError(
+                    "تجاوز التقرير المستخرج حد النص المسموح للتحليل المحلي."
+                )
+            self.events.put(
+                {
+                    "type": "malware_static_report",
+                    "sample_name": file_path.name,
+                    "static_report": report,
+                    "model_requested": model_requested,
+                    "model_available": analyze_with_model,
+                }
+            )
+            if not analyze_with_model:
+                return
+            analysis = agent.analyze_malware_artifact(report)
+            self.events.put(
+                {
+                    "type": "malware_analysis_answer",
+                    "analysis": analysis,
+                    "model": model,
+                    "static_report": report,
+                }
+            )
+        except Exception as exc:
+            agent.logger.exception("Local static file analysis failed")
+            self.events.put(
+                {
+                    "type": "malware_analysis_error",
+                    "message": f"{type(exc).__name__}: {exc}",
+                }
+            )
+
+    def _export_case_report(self, report_format: str) -> None:
+        if not self.case_static_report:
+            messagebox.showerror(
+                "لا يوجد تقرير",
+                "حلّل ملفًا أو الصق نصًا أولًا قبل تصدير تقرير الحالة.",
+            )
+            return
+        if report_format == "json":
+            file_path = filedialog.asksaveasfilename(
+                title="حفظ تقرير الحالة بصيغة JSON",
+                defaultextension=".json",
+                filetypes=(("JSON", "*.json"),),
+            )
+        elif report_format == "html":
+            file_path = filedialog.asksaveasfilename(
+                title="حفظ تقرير الحالة بصيغة HTML",
+                defaultextension=".html",
+                filetypes=(("HTML", "*.html"),),
+            )
+        else:
+            raise ValueError(f"Unsupported case report format: {report_format}")
+        if not file_path:
+            return
+
+        report = build_case_report(
+            self.case_sample_name,
+            self.case_static_report,
+            self.case_ai_analysis,
+            self.recent_alerts,
+            self.recent_security_events,
+        )
+        try:
+            with Path(file_path).open("w", encoding="utf-8", newline="\n") as output:
+                if report_format == "json":
+                    json.dump(report, output, ensure_ascii=False, indent=2)
+                    output.write("\n")
+                else:
+                    output.write(render_case_html(report))
+        except (OSError, TypeError, ValueError) as exc:
+            agent.logger.exception("Failed to export local case report")
+            messagebox.showerror("تعذر تصدير التقرير", str(exc))
+            return
+        self.malware_status_label.configure(
+            text=f"تم حفظ تقرير الحالة: {Path(file_path).name}",
+            fg=GREEN,
+        )
 
     def _malware_analysis_worker(self, artifact: str, model: str) -> None:
         try:

@@ -57,6 +57,22 @@ class RuleDetectorTests(unittest.TestCase):
         self.assertEqual(result["new_destinations"], 0)
         self.assertEqual(result["alerts"], [])
 
+    def test_connection_counts_below_configured_thresholds_do_not_alert(self):
+        detector = agent.RuleDetector()
+        with (
+            patch.object(agent, "MAX_CONNECTIONS_ALERT", 4),
+            patch.object(agent, "MAX_NEW_DESTINATIONS_ALERT", 3),
+            patch.object(agent, "MAX_PROCESS_CONNECTIONS_ALERT", 3),
+        ):
+            result = detector.inspect(
+                self.make_snapshot(
+                    self.make_connection("192.0.2.1"),
+                    self.make_connection("192.0.2.2"),
+                )
+            )
+
+        self.assertEqual(result["alerts"], [])
+
     def test_threshold_alerts_are_raised_and_cooldown_prevents_duplicates(self):
         detector = agent.RuleDetector()
         with (

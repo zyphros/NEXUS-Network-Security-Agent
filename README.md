@@ -6,7 +6,7 @@
 
 [العربية](README.ar.md) · [Repository](https://github.com/zyphros/NEXUS-Network-Security-Agent)
 
-> This project is an educational monitoring prototype. It reports rule-based indicators for human review; it is not a complete intrusion-detection system and does not prove that an attack is occurring.
+> This project is an educational monitoring and triage prototype. It reports advisory indicators for human review; it is not antivirus, a complete intrusion-detection system, or a replacement for forensic analysis, and it does not prove that an attack is occurring.
 
 ## Dashboard preview
 
@@ -45,7 +45,7 @@
 - Applies explainable connection-count thresholds and a cooldown to reduce repeated alerts.
 - Optionally explains alerts with Ollama on the same device. No cloud AI API or API key is required.
 - Includes an on-demand web research tab: search queries go to Bing RSS, while bounded public result excerpts can be analyzed by a loopback Ollama model without sending dashboard data.
-- Provides a defensive static-analysis mode for user-pasted strings/imports, pseudocode, disassembly, or sandbox reports. It does not accept executable uploads or run samples.
+- Provides one in-app defensive static-analysis tab for pasted strings/imports and reports, or local file selection. It never executes samples; for files it extracts bounded metadata, PE headers/imports, SHA-256, entropy, and printable strings locally, and displays the report even when Ollama is unavailable. If available, only the limited text report is sent to loopback Ollama.
 - Keeps monitoring responsive while the local model generates an explanation or answer.
 - Continues rule-based monitoring when Ollama is unavailable.
 - Offers an in-app command center for status, recent alerts, sampled connections, advisory isolation guidance, reports, and start/stop controls.
@@ -67,7 +67,7 @@
 
 Model weights are not committed to GitHub or stored in the project directory; Ollama keeps them in its own local model store. They therefore do not count toward the repository's 4 GB size, though installing multiple models increases Ollama's separate disk usage. Download and activation are optional and never automatic. Local inference may use substantial memory and CPU and can slow resource-limited devices; rule-based monitoring remains available with AI disabled.
 
-For static malware triage, select Qwen3 8B if the device has enough resources, open **Static analysis**, and paste text from an authorized sample's strings, imports, disassembly, decompiler, or sandbox report. Input is limited to 20,000 characters and sent only to the configured loopback Ollama endpoint; NEXUS does not read or execute binaries. Results are advisory and must be checked with approved, isolated analysis tooling.
+For in-app local file triage, open **Static analysis**, choose a file, and start analysis; samples are limited to 64 MiB. NEXUS reads the file without executing it or uploading its bytes. It extracts SHA-256, entropy, printable strings, and basic PE headers, sections, and imports. ELF headers and section names and thin Mach-O headers and segment/section names are parsed; ELF/Mach-O imports and fat Mach-O binaries are not parsed. The static report is displayed even when Ollama is unavailable. Requesting its optional local explanation requires explicitly selecting the checkbox; only the bounded extracted text report is sent to the configured loopback Ollama endpoint. JSON and HTML case exports include the latest analysis and recent session alerts; review them before sharing because they may contain sensitive details. You can also paste text or reports, limited to 20,000 characters. Results are advisory and should be checked with approved, isolated analysis tooling.
 
 We reviewed general models and repositories advertised for malware analysis. [malware-scanner-v3](https://huggingface.co/yuvaliloo/malware-scanner-v3) does not provide a model card describing training data or a license, and [Dolphin Cyber Malware Analyst](https://huggingface.co/RavichandranJ/Dolphin3-Cyber-MalwareAnalyst-GGUF) lacks clear model-card/license information and uses an abliterated variant. NEXUS therefore does not bundle or auto-install weights of unclear provenance or licensing. Static analysis uses the user's selected Ollama model, with Qwen3 8B recommended; this is not a claim that it is a malware-forensics fine-tune or a validated forensic tool.
 
@@ -120,7 +120,7 @@ Copy `.env.example` to `.env` and edit only the settings you need. `.env` is exc
 | `MAX_NEW_DESTINATIONS_ALERT` | `25` | New remote IP/port pairs per scan |
 | `MAX_PROCESS_CONNECTIONS_ALERT` | `80` | Remote connections per process |
 
-Increase `POLL_SECONDS` to reduce scan frequency. Rule thresholds are configurable heuristics and may need adjustment for a particular device.
+Increase `POLL_SECONDS` to reduce scan frequency. Rule thresholds are configurable heuristics and may need adjustment for a particular device; lower thresholds increase notifications and false positives. Rule tests verify threshold behavior, not validated detection rates on real-world attack datasets.
 
 ## Security event integrations (optional)
 
@@ -209,7 +209,7 @@ GitHub Actions runs the syntax checks and unit tests on Windows, Ubuntu Linux, a
 - Web research runs only after the user submits a query. The query is sent to Bing; only public result titles, URLs, and snippets are sent to Ollama for analysis. That analysis requires a loopback Ollama endpoint and excludes connection snapshots, alerts, and dashboard question history.
 - Search queries and linked result pages are handled under Microsoft's and the linked sites' privacy policies. Open only trusted result links; search excerpts and local AI summaries may be incomplete or misleading.
 - Recent free-form Q&A history is kept in memory for follow-up questions only; it is not written to disk by the command center.
-- The malware-analysis tab accepts only text pasted by the user and sends it to loopback Ollama; it does not open or execute binary samples.
+- The malware-analysis tab can inspect a locally selected file or user-pasted text in-app. It does not execute samples or send their bytes; only the bounded extracted report may be sent to loopback Ollama.
 - The command center recognizes fixed in-app commands and common status/alert questions offline (help, status, alerts, connections, recommendations, start/stop monitoring, and reports). Other text is a question for Ollama; no shell or operating-system command is executed.
 - Isolation guidance is advisory. NEXUS does not terminate processes, block connections, apply firewall rules, or isolate a device.
 - Logs and generated reports are stored under `~/.network_security_agent/data`, not in this repository.
