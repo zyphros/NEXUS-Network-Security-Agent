@@ -53,6 +53,7 @@ class NetworkAgentDashboard:
         self.ai_busy = False
         self.command_busy = False
         self.web_busy = False
+        self.malware_analysis_busy = False
         self.model_busy = False
         self.ollama_available = False
         self.available_models: set[str] = set()
@@ -610,6 +611,82 @@ class NetworkAgentDashboard:
         )
         self.web_analysis_text.pack(fill="x")
 
+        malware_page = tk.Frame(assistant_tabs, bg=PANEL)
+        assistant_tabs.add(malware_page, text="تحليل ساكن")
+        tk.Label(
+            malware_page,
+            text=(
+                "الصق نصًا ساكنًا فقط: strings أو imports أو pseudocode أو disassembly "
+                "أو تقرير sandbox. لا ترفع ولا تشغّل العينة. يستخدم التحليل نموذج Ollama "
+                "المحلي المحدد؛ اختر Qwen3 8B لمهام البرمجة الأثقل إذا كانت موارد جهازك كافية."
+            ),
+            bg=PANEL,
+            fg=MUTED,
+            justify="right",
+            wraplength=500,
+            font=self.font_small,
+        ).pack(fill="x", padx=8, pady=(8, 5))
+        self.malware_artifact_text = tk.Text(
+            malware_page,
+            height=8,
+            bg="#091421",
+            fg=TEXT,
+            insertbackground=CYAN,
+            relief="flat",
+            wrap="word",
+            font=(self.font_family, 9),
+            padx=9,
+            pady=7,
+        )
+        self.malware_artifact_text.pack(fill="x", expand=False, padx=8, pady=(0, 6))
+        malware_controls = tk.Frame(malware_page, bg=PANEL)
+        malware_controls.pack(fill="x", padx=8, pady=(0, 5))
+        self.malware_analyze_button = tk.Button(
+            malware_controls,
+            text="تحليل النص محليًا",
+            command=self.submit_malware_analysis,
+            bg="#0d665c",
+            fg="#eafff6",
+            activebackground="#138272",
+            activeforeground="white",
+            relief="flat",
+            bd=0,
+            padx=12,
+            pady=7,
+            cursor="hand2",
+            font=(self.font_family, 9, "bold"),
+        )
+        self.malware_analyze_button.pack(side="left")
+        self.malware_status_label = tk.Label(
+            malware_controls,
+            text="تحليل نصي محلي عند الطلب؛ لا تُرسل ملفات أو تُنفّذ عينات.",
+            bg=PANEL,
+            fg=MUTED,
+            anchor="w",
+            font=self.font_small,
+        )
+        self.malware_status_label.pack(side="left", fill="x", expand=True, padx=(9, 0))
+        tk.Label(
+            malware_page,
+            text="النتيجة (ملاحظات واحتمالات دفاعية فقط)",
+            bg=PANEL,
+            fg=GREEN,
+            anchor="e",
+            font=(self.font_family, 9, "bold"),
+        ).pack(fill="x", padx=8, pady=(3, 3))
+        self.malware_result_text = tk.Text(
+            malware_page,
+            bg="#091421",
+            fg="#c7d6e5",
+            relief="flat",
+            wrap="word",
+            font=(self.font_family, 9),
+            padx=9,
+            pady=7,
+            state="disabled",
+        )
+        self.malware_result_text.pack(fill="both", expand=True, padx=8, pady=(0, 8))
+
         footer = tk.Frame(outer, bg=BG)
         footer.pack(fill="x", pady=(11, 0))
         self.status_text = tk.Label(
@@ -758,6 +835,24 @@ class NetworkAgentDashboard:
             self.model_busy = False
             self.model_pull_button.configure(state="normal")
             self.model_status_label.configure(text=event["message"], fg=RED)
+        elif event_type == "malware_analysis_answer":
+            self.malware_analysis_busy = False
+            self.malware_analyze_button.configure(state="normal")
+            self.malware_status_label.configure(
+                text=f"اكتمل التحليل المحلي باستخدام {event['model']}. راجع النتيجة نقديًا.",
+                fg=GREEN,
+            )
+            self.malware_result_text.configure(state="normal")
+            self.malware_result_text.delete("1.0", "end")
+            self.malware_result_text.insert("end", event["analysis"])
+            self.malware_result_text.configure(state="disabled")
+        elif event_type == "malware_analysis_error":
+            self.malware_analysis_busy = False
+            self.malware_analyze_button.configure(state="normal")
+            self.malware_status_label.configure(
+                text=f"تعذر التحليل المحلي: {event['message']}",
+                fg=RED,
+            )
         elif event_type == "command_answer":
             self.command_busy = False
             self.command_send_button.configure(state="normal")
@@ -1093,6 +1188,66 @@ class NetworkAgentDashboard:
             agent.logger.exception("Local analysis of web search results failed")
             self.events.put(
                 {"type": "web_analysis_error", "message": f"{type(exc).__name__}: {exc}"}
+            )
+
+    def submit_malware_analysis(self) -> str:
+        artifact = self.malware_artifact_text.get("1.0", "end-1c").strip()
+        if self.malware_analysis_busy:
+            return "break"
+        if not artifact:
+            self.malware_status_label.configure(
+                text="ألصق strings أو imports أو كودًا مفككًا للتحليل.",
+                fg=AMBER,
+            )
+            return "break"
+        if len(artifact) > agent.MAX_MALWARE_ARTIFACT_CHARS:
+            self.malware_status_label.configure(
+                text=f"النص محدود بـ{agent.MAX_MALWARE_ARTIFACT_CHARS} حرف.",
+                fg=RED,
+            )
+            return "break"
+        if not self.ollama_available:
+            self.malware_status_label.configure(
+                text="Ollama أو النموذج المحلي المحدد غير متاح.",
+                fg=RED,
+            )
+            return "break"
+
+        model = agent.AI_MODEL
+        self.malware_analysis_busy = True
+        self.malware_analyze_button.configure(state="disabled")
+        self.malware_status_label.configure(
+            text=f"جارٍ تحليل النص محليًا باستخدام {model}…",
+            fg=AMBER,
+        )
+        self.malware_result_text.configure(state="normal")
+        self.malware_result_text.delete("1.0", "end")
+        self.malware_result_text.configure(state="disabled")
+        threading.Thread(
+            target=self._malware_analysis_worker,
+            args=(artifact, model),
+            name="local-static-malware-analysis",
+            daemon=True,
+        ).start()
+        return "break"
+
+    def _malware_analysis_worker(self, artifact: str, model: str) -> None:
+        try:
+            analysis = agent.analyze_malware_artifact(artifact)
+            self.events.put(
+                {
+                    "type": "malware_analysis_answer",
+                    "analysis": analysis,
+                    "model": model,
+                }
+            )
+        except Exception as exc:
+            agent.logger.exception("Local static malware analysis failed")
+            self.events.put(
+                {
+                    "type": "malware_analysis_error",
+                    "message": f"{type(exc).__name__}: {exc}",
+                }
             )
 
     def _show_web_results(self, results: List[Dict[str, str]]) -> None:

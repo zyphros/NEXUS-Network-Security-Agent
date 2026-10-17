@@ -45,13 +45,14 @@
 - Applies explainable connection-count thresholds and a cooldown to reduce repeated alerts.
 - Optionally explains alerts with Ollama on the same device. No cloud AI API or API key is required.
 - Includes an on-demand web research tab: search queries go to Bing RSS, while bounded public result excerpts can be analyzed by a loopback Ollama model without sending dashboard data.
+- Provides a defensive static-analysis mode for user-pasted strings/imports, pseudocode, disassembly, or sandbox reports. It does not accept executable uploads or run samples.
 - Keeps monitoring responsive while the local model generates an explanation or answer.
 - Continues rule-based monitoring when Ollama is unavailable.
 - Offers an in-app command center for status, recent alerts, sampled connections, advisory isolation guidance, reports, and start/stop controls.
 - Adds cautious isolation recommendations to alerts without performing enforcement; any response remains an authorized operator's responsibility.
 - Optionally ingests warning-and-higher Syslog UDP messages and Wazuh `alerts.json` records as read-only events.
 - Stores application logs and reports in a per-user local data directory, outside the repository.
-- Uses bounded scans and a small, quantized 3B model by default; Qwen3 4B is available as an optional, user-initiated download.
+- Uses bounded scans and a small, quantized 3B model by default; Qwen3 4B and 8B are available as optional, user-initiated downloads.
 
 ## Requirements
 
@@ -65,6 +66,10 @@
 `qwen2.5:3b` remains the default model to avoid imposing extra load on a laptop. The dashboard offers `qwen3:4b` and `qwen3:8b` as explicit download options; it checks the official manifest over HTTPS and refuses a model larger than 5.5 GB. At verification time, official Ollama layers measured about 2.50 GB for `qwen3:4b` and 5.23 GB for `qwen3:8b`. Qwen3 8B offers greater capability but uses more RAM and CPU and may slow the device; the dashboard asks before downloading it. Qwen3 weights are published under Apache 2.0; review the [official Qwen3 8B model card](https://huggingface.co/Qwen/Qwen3-8B) and verify the current license before commercial redistribution. **Use selected** saves the choice in `.env` for future launches.
 
 Model weights are not committed to GitHub or stored in the project directory; Ollama keeps them in its own local model store. They therefore do not count toward the repository's 4 GB size, though installing multiple models increases Ollama's separate disk usage. Download and activation are optional and never automatic. Local inference may use substantial memory and CPU and can slow resource-limited devices; rule-based monitoring remains available with AI disabled.
+
+For static malware triage, select Qwen3 8B if the device has enough resources, open **Static analysis**, and paste text from an authorized sample's strings, imports, disassembly, decompiler, or sandbox report. Input is limited to 20,000 characters and sent only to the configured loopback Ollama endpoint; NEXUS does not read or execute binaries. Results are advisory and must be checked with approved, isolated analysis tooling.
+
+We reviewed general models and repositories advertised for malware analysis. [malware-scanner-v3](https://huggingface.co/yuvaliloo/malware-scanner-v3) does not provide a model card describing training data or a license, and [Dolphin Cyber Malware Analyst](https://huggingface.co/RavichandranJ/Dolphin3-Cyber-MalwareAnalyst-GGUF) lacks clear model-card/license information and uses an abliterated variant. NEXUS therefore does not bundle or auto-install weights of unclear provenance or licensing. Static analysis uses the user's selected Ollama model, with Qwen3 8B recommended; this is not a claim that it is a malware-forensics fine-tune or a validated forensic tool.
 
 ## Quick start
 
@@ -182,6 +187,7 @@ GitHub Actions runs the syntax checks and unit tests on Windows, Ubuntu Linux, a
 │   ├── test_command_center.py  # Command allowlist, question, and recommendation tests
 │   ├── test_rule_detector.py  # Rule-detector unit tests
 │   ├── test_security_event_ingest.py # Integration input tests
+│   ├── test_malware_analysis.py # Local static-analysis boundary tests
 │   ├── test_local_model_manager.py # Local model download and selection tests
 │   └── test_web_research.py   # Web search and local-analysis tests
 ├── .github/workflows/
@@ -203,6 +209,7 @@ GitHub Actions runs the syntax checks and unit tests on Windows, Ubuntu Linux, a
 - Web research runs only after the user submits a query. The query is sent to Bing; only public result titles, URLs, and snippets are sent to Ollama for analysis. That analysis requires a loopback Ollama endpoint and excludes connection snapshots, alerts, and dashboard question history.
 - Search queries and linked result pages are handled under Microsoft's and the linked sites' privacy policies. Open only trusted result links; search excerpts and local AI summaries may be incomplete or misleading.
 - Recent free-form Q&A history is kept in memory for follow-up questions only; it is not written to disk by the command center.
+- The malware-analysis tab accepts only text pasted by the user and sends it to loopback Ollama; it does not open or execute binary samples.
 - The command center recognizes fixed in-app commands and common status/alert questions offline (help, status, alerts, connections, recommendations, start/stop monitoring, and reports). Other text is a question for Ollama; no shell or operating-system command is executed.
 - Isolation guidance is advisory. NEXUS does not terminate processes, block connections, apply firewall rules, or isolate a device.
 - Logs and generated reports are stored under `~/.network_security_agent/data`, not in this repository.
